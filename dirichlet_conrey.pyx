@@ -3,7 +3,7 @@
 # devised by Brian Conrey.
 #
 
-from sage.all import factor, primitive_root, euler_phi, gcd, exp, is_prime, DirichletGroup, vector, Integer
+from sage.all import factor, primitive_root, euler_phi, gcd, exp, is_prime, DirichletGroup, vector, Integer, power_mod, prod, crt
 from sage.modular.dirichlet import DirichletCharacter
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
@@ -353,18 +353,46 @@ cdef class DirichletCharacter_conrey:
                                                              # a rational number.
 
     cpdef is_even(self):
+        r"""
+        Return ``true`` if this character is even, ``false`` otherwise.
+        
+        A character `\chi` is even if `\chi(n) = \chi(-n)` for all n, and odd if
+        `\chi(n) = -\chi(-n)` for all ``n``. Every character is either even or odd.
+        """
         return self.exponent(-1) == 0
 
     cpdef is_odd(self):
+        r"""
+        Return ``true`` if this character is odd, ``false`` otherwise.
+        
+        A character chi is even if `\chi(n) = \chi(-n)` for all n, and odd if
+        `\chi(n) = -\chi(-n)` for all ``n``. Every character is either even or odd.
+        """
         return self.exponent(-1) != 0
 
     def is_trivial(self):
+        r"""
+        Return ``true`` if this character is trivial, ``false`` otherwise.
+
+        A character `\chi` is trivial if `\chi(n) = 1` whenever it is nonzero.
+        """
         return self._n == 1
 
-    def kernel(self):
-        return [n for n in range(self._parent.q) if self.exponent(n) == 0]
+    def kernel(self, outtype=None):
+        r"""
+        Return the kernel of this character as a list. By default, this is
+        a list of Python integers, but ``outtype`` can be specified to
+        change this to something else.
+        """
+        if outtype is not None:
+            return [outtype(n) for n in range(self._parent.q) if self.exponent(n) == 0]
+        else:
+            return [n for n in range(self._parent.q) if self.exponent(n) == 0]
 
     def modulus(self):
+        r"""
+        Return the modulus of this charater as a Python integer.
+        """
         return self._parent.q
 
     def __repr__(self):
@@ -396,6 +424,45 @@ cdef class DirichletCharacter_conrey:
         n = self._n % self._parent.q_odd
         cdef long dlog = self._parent.A[n * self._parent.k + j]
         return dlog % p != 0
+
+    cdef tuple _primitive_part_at_known_p(self, long j):
+        r"""
+        Return the conductor and the index of the primitive character
+        associated to the p-part of the character for the j-th odd prime
+        factor p of the modulus.
+        """
+
+        cdef long e, conductor, index
+        cdef long p = self._parent.primes[j]
+        n = self._n % self._parent.q_odd
+        cdef long dlog = self._parent.A[n * self._parent.k + j]
+        if dlog == 0:
+            return (1, 1)
+        else:
+            e = 0
+            while dlog % p == 0:
+                dlog /= p
+                e = e + 1
+            conductor = p**(self._parent.exponents[j] - e)
+            index = power_mod(self._parent.generators[j], dlog, conductor)
+            return (index, conductor)
+
+    def conductor(self):
+        r"""
+        Return the conductor of this character.
+        """
+        return prod( [c for (n, c) in [self._primitive_part_at_known_p(k) for k in range(self._parent.k)]] )
+
+    def primitive_character(self):
+        r"""
+        Return the primitive character that induces this character.
+        """
+        odd_parts = [self._primitive_part_at_known_p(k) for k in range(self._parent.k)]
+        indices = [Integer(n) for (n,m) in odd_parts]
+        moduli = [Integer(m) for (n,m) in odd_parts]
+        q = prod(moduli)
+        index = crt(indices, moduli)
+        return DirichletGroup_conrey(q)[index]
 
     cdef is_primitive_at_two(self):
         cdef long q_even = self._parent.q_even
