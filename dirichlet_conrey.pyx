@@ -3,7 +3,7 @@
 # devised by Brian Conrey.
 #
 
-from sage.all import factor, primitive_root, euler_phi, gcd, exp, is_prime, DirichletGroup, vector
+from sage.all import factor, primitive_root, euler_phi, gcd, exp, is_prime, DirichletGroup, vector, Integer
 from sage.modular.dirichlet import DirichletCharacter
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
@@ -294,10 +294,78 @@ cdef class DirichletCharacter_conrey:
         self._n = n % parent.q
 
     def __call__(self, long m):
+        return self.value(m)
+
+    cpdef value(self, long m):
         return self._parent.chi(self._n, m)
 
     def values(self):
         return [self(m) for m in xrange(self._parent.q)]
+
+    cpdef long exponent(self, long m):
+        r"""
+        Return the number a such that chi(m) = e(a/phi(q)).
+        """
+        cdef long exponent
+        cdef long q_even = self._parent.q_even
+        cdef long q_odd = self._parent.q_odd
+
+        if q_odd > 1:
+            odd_exponent = self._parent._chi_odd_exponent(self._n % q_odd, m % q_odd)
+        else:
+            odd_exponent = 0
+
+        if q_even > 4:
+            even_exponent = self._parent._chi_even_exponent(self._n % q_even, m % q_even)
+            even_exponent *= 2  # the function just above computes the exponent of
+                                # e(1/ (q_even/4) ), but we want the exponent of
+                                # e(1/phi(q_even)) = e(1/(q_even/2))
+        elif q_even == 4:
+            if (self._n % q_even) == 3 and (m % q_even) == 3:
+                even_exponent = 1
+            else:
+                even_exponent = 0
+        else:
+            even_exponent = 0
+
+        if q_even == 1: # special case because phi(1) != 1/2.
+            exponent = odd_exponent
+        else:
+            exponent = odd_exponent * q_even/2 + even_exponent * self._parent.phi_q_odd
+    
+        # we now have the value of chi(m) as e(exponent/phi(q))
+
+        # it could be equal to phi(q), though, and in that case we
+        # want it to be zero...
+        if exponent == self._parent.phi_q:
+            exponent -= self._parent.phi_q
+
+        return exponent
+
+    def logvalue(self, long m):
+        r"""
+        Return log(chi(m))/(2 pi i) as a rational number; i.e., return a/b
+        so that chi(m) = e(a/b). 
+        """
+        cdef long exponent = self.exponent(m)
+        return Integer(exponent)/Integer(self._parent.phi_q) # TODO: there is probably
+                                                             # a better way to construct
+                                                             # a rational number.
+
+    cpdef is_even(self):
+        return self.exponent(-1) == 0
+
+    cpdef is_odd(self):
+        return self.exponent(-1) != 0
+
+    def is_trivial(self):
+        return self._n == 1
+
+    def kernel(self):
+        return [n for n in range(self._parent.q) if self.exponent(n) == 0]
+
+    def modulus(self):
+        return self._parent.q
 
     def __repr__(self):
         return "Dirichlet character with index %d modulo %d" % (self._n, self._parent.q)
@@ -333,8 +401,10 @@ cdef class DirichletCharacter_conrey:
         cdef long q_even = self._parent.q_even
         cdef long * B = self._parent.B
         cdef long n = self._n % q_even
-        if q_even < 4:
+        if q_even == 1:
             return True
+        elif q_even == 2:
+            return False
         elif q_even == 4:
             return n == 3
         elif q_even == 8:
@@ -385,36 +455,8 @@ cdef class DirichletCharacter_conrey:
 
         cdef long zeta_order = G.zeta_order()
         exponents = []
-        cdef long q_even = self._parent.q_even
-        cdef long q_odd = self._parent.q_odd
         for a in gens:
-            if q_odd > 1:
-                odd_exponent = self._parent._chi_odd_exponent(self._n % q_odd, a % q_odd)
-            else:
-                odd_exponent = 0
-
-            if q_even > 4:
-                even_exponent = self._parent._chi_even_exponent(self._n % q_even, a % q_even)
-                even_exponent *= 2  # the function just above computes the exponent of
-                                    # e(1/ (q_even/4) ), but we want the exponent of
-                                    # e(1/phi(q_even)) = e(1/(q_even/2))
-            elif q_even == 4:
-                if (self._n % q_even) == 3 and (a % q_even) == 3:
-                    even_exponent = 1
-                else:
-                    even_exponent = 0
-            else:
-                even_exponent = 0
-
-            if q_even == 1: # special case because phi(1) != 1/2.
-                exponent = odd_exponent
-            else:
-                exponent = odd_exponent * q_even/2 + even_exponent * self._parent.phi_q_odd
-        
-            # we now have the value of chi(a) as e(exponent/phi(q)), but
-            # we actually want chi(a) = e( exponent/zeta_order ) so, we normalize:
-
-            exponent = (exponent * zeta_order)/self._parent.phi_q
+            exponent = (self.exponent(a) * zeta_order)/self._parent.phi_q
 
             exponents.append(exponent)
 
