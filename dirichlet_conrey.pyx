@@ -2,6 +2,9 @@
 # A new implementation of Dirichlet characters based on the numbering scheme
 # devised by Brian Conrey.
 #
+include "interrupt.pxi"  # ctrl-c interrupt block support
+include "stdsage.pxi"  # ctrl-c interrupt block support
+include "cdefs.pxi"
 
 from sage.all import factor, primitive_root, euler_phi, gcd, exp, is_prime, DirichletGroup, vector, Integer, power_mod, prod, crt
 from sage.modular.dirichlet import DirichletCharacter
@@ -447,11 +450,59 @@ cdef class DirichletCharacter_conrey:
             index = power_mod(self._parent.generators[j], dlog, conductor)
             return (index, conductor)
 
+    cdef tuple _primitive_part_at_two(self):
+        r"""
+        Return the conductor and the index of the primitive
+        character associated to the even part of the modulus.
+        """
+        raise TypeError("This is broken right now.")
+        cdef long q_even = self._parent.q_even
+        cdef long * B = self._parent.B
+        cdef long n = self._n % q_even
+        cdef long e, dlog
+        if q_even == 1:
+            return (1,1)
+        elif q_even == 2:
+            return (1,1)
+        elif q_even == 4:
+            if n == 3:
+                return (3,4)
+            else:
+                return (1,1)
+        elif q_even == 8:
+            if B[n] % 2 == 1 and B[n-1] == 1:
+                return (n,8)
+            elif B[n] % 2 == 0 and B[n-1] == -1:
+                return (n,8)
+            elif n == 1:
+                return (1,1)
+            else:
+                return (3,4)
+        else:
+            dlog = B[n]
+            print dlog, B[n-1]
+            if dlog == 0:
+                return (1,1)
+            e = 0
+            while dlog % 2 == 0:
+                dlog /= 2
+                e = e + 1
+            conductor = q_even/(2**e)
+            if B[n - 1] == 1:
+                return (power_mod(3, dlog, conductor), conductor)
+            else:
+                return (-power_mod(3, dlog, conductor), conductor)
+
+
+
     def conductor(self):
         r"""
         Return the conductor of this character.
         """
-        return prod( [c for (n, c) in [self._primitive_part_at_known_p(k) for k in range(self._parent.k)]] )
+        odd_parts = [self._primitive_part_at_known_p(k) for k in range(self._parent.k)]
+        odd_conductor = prod( [c for (n, c) in odd_parts] )
+        _, even_conductor = self._primitive_part_at_two()
+        return odd_conductor * even_conductor
 
     def primitive_character(self):
         r"""
