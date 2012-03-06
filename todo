@@ -59,7 +59,7 @@ DirichletCharacter:
  def maximize_base_ring(self)
  def minimize_base_ring(self)
  * def modulus(self)
- def level(self)
+ * def level(self)
  def multiplicative_order(self)
  * def primitive_character(self)
  def restrict(self, M)
