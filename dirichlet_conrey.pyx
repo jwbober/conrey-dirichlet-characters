@@ -22,6 +22,8 @@ from sage.all import factor,        \
                      multiplicative_order
 from sage.modular.dirichlet import DirichletCharacter
 
+import cmath
+
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
 
 cdef class DirichletGroup_conrey:
@@ -373,6 +375,64 @@ cdef class DirichletCharacter_conrey:
 
         return exponent
 
+    cpdef complex gauss_sum(self, long a = 1):
+        r"""
+        Return the Gauss sum
+
+        ``\tau_a(\chi) = \sum_{n=0}^{q-1} \chi(n) exp(2 \pi i an/q)``
+
+        We compute in the complex numbers, so we compute and return this as
+        a complex double precision number.
+
+        EXAMPLES:
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(17)
+        sage: G[3].gauss_sum()
+        (2.325224300372...+3.404898229456...j)
+        
+        When `\chi` is primitive, and `a` is relatively prime to `q`,
+        the Gauss sum always has asbolute value
+        `\sqrt(q)`.
+
+        sage: G = DirichletGroup_conrey(17)
+        sage: G[4].is_primitive()
+        True
+        sage: abs(G[4].gauss_sum(5))
+        4.12310562561...
+        sage: sqrt(17.0)
+        4.12310562561766
+
+        TESTS::
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(4 * 11)
+        sage: [abs(chi.gauss_sum(3) - chi.sage_character().gauss_sum_numerical(a=3)) < 5e-14 for chi in G] == [True] * euler_phi(4 * 11)
+        True
+        sage: G = DirichletGroup_conrey(23)
+        sage: [abs(chi.gauss_sum() - chi.sage_character().gauss_sum_numerical()) < 5e-14 for chi in G] == [True] * euler_phi(23)
+        True
+        """
+        cdef complex S = 0
+        cdef complex x = 0
+        cdef long q = self._parent.q
+        for n in range(q):
+            x = self.value(n)
+            if x != 0:
+                S = S + x * cmath.exp( (twopii * a * n) / q)
+
+        return S
+
+    cpdef complex gauss_sum_numerical(self, prec = 53, long a = 1):
+        r"""
+        This is a synonym for gauss_sum(), except that it accepts an extra
+        precision argument for uniformity with the other implementation of
+        Dirichlet characters. Right now higher precision is not implemented,
+        however.
+        """
+
+        if prec != 53:
+            raise NotImplementedError("Right now we only support a precision of 53 bits.")
+
+        return self.gauss_sum(a)
 
     cpdef is_even(self):
         r"""
@@ -710,7 +770,7 @@ cdef class DirichletCharacter_conrey:
         exponents = M(exponents)
         return DirichletCharacter(self._parent.standard_dirichlet_group(), exponents)
 
-    cpdef value(self, long m):
+    cpdef complex value(self, long m):
         return self._parent.chi(self._n, m)
 
 

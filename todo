@@ -1,3 +1,5 @@
+-higher precision
+
 DirichletGroup:
  def __init__(self, modulus, zeta, zeta_order)
  def change_ring(self, R, zeta=None, zeta_order=None)
@@ -46,8 +48,8 @@ DirichletCharacter:
  def decomposition(self)
  def extend(self, M)
  def galois_orbit(self, sort=True)
- def gauss_sum(self, a=1)
- def gauss_sum_numerical(self, prec=53, a=1)
+ * def gauss_sum(self, a=1)
+ * def gauss_sum_numerical(self, prec=53, a=1)
  def jacobi_sum(self, char, check=True)
  def kloosterman_sum(self, a=1,b=0)
  def kloosterman_sum_numerical(self, prec=53, a=1,b=0)
