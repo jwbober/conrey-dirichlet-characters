@@ -12,7 +12,6 @@ from sage.modular.dirichlet import DirichletCharacter
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
 
 cdef class DirichletGroup_conrey:
-
     #
     # Note: perhaps the discrete log tables should be stored
     # separately for each prime. This will make computation a
@@ -361,6 +360,13 @@ cdef class DirichletCharacter_conrey:
         
         A character `\chi` is even if `\chi(n) = \chi(-n)` for all n, and odd if
         `\chi(n) = -\chi(-n)` for all ``n``. Every character is either even or odd.
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(11)
+        sage: [chi.is_even() for chi in G] == [chi.sage_character().is_even() for chi in G]
+        True
         """
         return self.exponent(-1) == 0
 
@@ -370,6 +376,13 @@ cdef class DirichletCharacter_conrey:
         
         A character chi is even if `\chi(n) = \chi(-n)` for all n, and odd if
         `\chi(n) = -\chi(-n)` for all ``n``. Every character is either even or odd.
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(16)
+        sage: [chi.is_odd() for chi in G] == [chi.sage_character().is_odd() for chi in G]
+        True
         """
         return self.exponent(-1) != 0
 
@@ -378,6 +391,17 @@ cdef class DirichletCharacter_conrey:
         Return ``true`` if this character is trivial, ``false`` otherwise.
 
         A character `\chi` is trivial if `\chi(n) = 1` whenever it is nonzero.
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(17)
+        sage: G[1].is_trivial()
+        True
+        sage: G[18].is_trivial()
+        True
+        sage: G[2].is_trivial()
+        False
         """
         return self._n == 1
 
@@ -386,11 +410,18 @@ cdef class DirichletCharacter_conrey:
         Return the kernel of this character as a list. By default, this is
         a list of Python integers, but ``outtype`` can be specified to
         change this to something else.
+        
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(4 * 25)
+        sage: [chi.kernel() for chi in G] == [chi.sage_character().kernel() for chi in G]
+        True
         """
         if outtype is not None:
-            return [outtype(n) for n in range(self._parent.q) if self.exponent(n) == 0]
+            return [outtype(n) for n in range(self._parent.q) if gcd(n,self._parent.q) == 1 and self.exponent(n) == 0]
         else:
-            return [n for n in range(self._parent.q) if self.exponent(n) == 0]
+            return [n for n in range(self._parent.q) if gcd(n,self._parent.q) == 1 and self.exponent(n) == 0]
 
     def modulus(self):
         r"""
@@ -450,12 +481,11 @@ cdef class DirichletCharacter_conrey:
             index = power_mod(self._parent.generators[j], dlog, conductor)
             return (index, conductor)
 
-    cdef tuple _primitive_part_at_two(self):
+    def primitive_part_at_two(self):
         r"""
         Return the conductor and the index of the primitive
         character associated to the even part of the modulus.
         """
-        raise TypeError("This is broken right now.")
         cdef long q_even = self._parent.q_even
         cdef long * B = self._parent.B
         cdef long n = self._n % q_even
@@ -479,38 +509,92 @@ cdef class DirichletCharacter_conrey:
             else:
                 return (3,4)
         else:
-            dlog = B[n]
-            print dlog, B[n-1]
-            if dlog == 0:
+            if n == 1:
                 return (1,1)
+            elif n == q_even - 1:
+                return (7, 8) # special case for primitive character mod 8
+            elif n == q_even/2 - 1:
+                return (3,4)  # special case for primitive character mod 4
+            dlog = B[n]
             e = 0
             while dlog % 2 == 0:
                 dlog /= 2
                 e = e + 1
             conductor = q_even/(2**e)
             if B[n - 1] == 1:
-                return (power_mod(3, dlog, conductor), conductor)
+                index = power_mod(3, dlog, conductor)
+                return (index, conductor)
             else:
-                return (-power_mod(3, dlog, conductor), conductor)
+                index = -power_mod(3, dlog, conductor)
+                return (index, conductor)
 
 
 
     def conductor(self):
         r"""
         Return the conductor of this character.
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(17)
+        sage: G[1].conductor()
+        1
+        sage: G[18].conductor()
+        1
+        sage: G[2].conductor()
+        17
+
+        This is tested more thoroughly in primitive_character().
         """
         odd_parts = [self._primitive_part_at_known_p(k) for k in range(self._parent.k)]
         odd_conductor = prod( [c for (n, c) in odd_parts] )
-        _, even_conductor = self._primitive_part_at_two()
+        _, even_conductor = self.primitive_part_at_two()
         return odd_conductor * even_conductor
 
     def primitive_character(self):
         r"""
         Return the primitive character that induces this character.
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(17)
+        sage: G[1].primitive_character()
+        Dirichlet character with index 0 modulo 1
+        sage: G[18].primitive_character()
+        Dirichlet character with index 0 modulo 1
+        sage: G[2].primitive_character()
+        Dirichlet character with index 2 modulo 17
+        sage: G = DirichletGroup_conrey(1)
+        sage: [chi.primitive_character().sage_character() for chi in G] == [chi.sage_character().primitive_character() for chi in G]
+        True
+        sage: G = DirichletGroup_conrey(2)
+        sage: [chi.primitive_character().sage_character() for chi in G] == [chi.sage_character().primitive_character() for chi in G]
+        True
+        sage: G = DirichletGroup_conrey(4)
+        sage: [chi.primitive_character().sage_character() for chi in G if not chi.is_trivial()] == [chi.sage_character().primitive_character() for chi in G if not chi.is_trivial()] # omitting trivial character because of a bug in sage
+        True
+        sage: G = DirichletGroup_conrey(8)
+        sage: [chi.primitive_character().sage_character() for chi in G if not chi.is_trivial()] == [chi.sage_character().primitive_character() for chi in G if not chi.is_trivial()] # omitting trivial character because of a bug in sage
+        True
+        sage: G = DirichletGroup_conrey(16)
+        sage: [chi.primitive_character().sage_character() for chi in G] == [chi.sage_character().primitive_character() for chi in G]
+        True
+        sage: G = DirichletGroup_conrey(8 * 5)
+        sage: [chi.primitive_character().sage_character() for chi in G] == [chi.sage_character().primitive_character() for chi in G]
+        True
+        sage: G = DirichletGroup_conrey(8 * 5 * 5)
+        sage: [chi.primitive_character().sage_character() for chi in G] == [chi.sage_character().primitive_character() for chi in G]
+        True
+        sage: G = DirichletGroup_conrey(16 * 3 * 3)
+        sage: [chi.primitive_character().sage_character() for chi in G] == [chi.sage_character().primitive_character() for chi in G]
+        True
         """
         odd_parts = [self._primitive_part_at_known_p(k) for k in range(self._parent.k)]
-        indices = [Integer(n) for (n,m) in odd_parts]
-        moduli = [Integer(m) for (n,m) in odd_parts]
+        even_index, even_conductor = self.primitive_part_at_two()
+        indices = [Integer(even_index)] + [Integer(n) for (n,m) in odd_parts]
+        moduli = [Integer(even_conductor)] + [Integer(m) for (n,m) in odd_parts]
         q = prod(moduli)
         index = crt(indices, moduli)
         return DirichletGroup_conrey(q)[index]
@@ -538,6 +622,20 @@ cdef class DirichletCharacter_conrey:
     def is_primitive(self):
         """
         Return whether or not this character is primitive.
+
+        EXAMPLES::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(5*5*5)
+        sage: G[1].is_primitive()
+        False
+        sage: G[2].is_primitive()
+        True
+
+        TESTS::
+        sage: from dirichlet_conrey import *
+        sage: [chi.is_primitive() for chi in G] == [chi.sage_character().is_primitive() for chi in G]
+        True
         """
 
         for j in range(self._parent.k):

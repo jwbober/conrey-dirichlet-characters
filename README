@@ -1,0 +1,9 @@
+This contains some Sage/Cython code for working with Dirichlet characters
+using a numbering scheme described by Brian Conrey. I intend to eventually
+get this included in Sage, but for now I am developing it separately.
+
+Right now, to use this code, you can just use "load dirichlet_conrey.pyx"
+from a running Sage session, or you can run "sage setup.py install" to build
+it as a module and put it in your Sage python modules directory, so that you
+can use it as "import dirichlet_conrey.pyx". To run the doctests, you need
+to actually run setup.py to install the module.
