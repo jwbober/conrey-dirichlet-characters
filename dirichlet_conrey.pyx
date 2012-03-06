@@ -6,7 +6,20 @@ include "interrupt.pxi"  # ctrl-c interrupt block support
 include "stdsage.pxi"  # ctrl-c interrupt block support
 include "cdefs.pxi"
 
-from sage.all import factor, primitive_root, euler_phi, gcd, exp, is_prime, DirichletGroup, vector, Integer, power_mod, prod, crt
+from sage.all import factor,        \
+                     primitive_root,\
+                     euler_phi,     \
+                     gcd,           \
+                     exp,           \
+                     is_prime,      \
+                     DirichletGroup,\
+                     vector,        \
+                     Integer,       \
+                     power_mod,     \
+                     prod,          \
+                     crt,           \
+                     mod,           \
+                     multiplicative_order
 from sage.modular.dirichlet import DirichletCharacter
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
@@ -508,6 +521,32 @@ cdef class DirichletCharacter_conrey:
         """
         return self._parent.q
 
+    def multiplicative_order(self):
+        r"""
+        Return the order of this character as an element of the Dirichlet
+        group that it is a member of. The set of characters modulo q forms an
+        abelian group which is isomorphic to `(Z/qZ)^*`, so every element has
+        finite order.
+
+        EXAMPLES::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(11)
+        sage: G[1].multiplicative_order()
+        1
+        sage: G[-1].multiplicative_order()
+        2
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: G = DirichletGroup_conrey(4 * 49)
+        sage: [chi.multiplicative_order() for chi in G] == [chi.sage_character().multiplicative_order() for chi in G]
+        True
+        """
+        
+        return multiplicative_order(mod(self._n, self._parent.q))
+        
     def primitive_character(self):
         r"""
         Return the primitive character that induces this character.
