@@ -24,7 +24,17 @@ ext_modules = [Extension('dirichlet_conrey', sources=['dirichlet_conrey.pyx', ],
                      extra_compile_args = extra_compile_args,
                      extra_link_args = extra_link_args)]
                      
+
+include_dirs = [SAGE_ROOT + "/local/include/csage/",
+                SAGE_ROOT + "/local/include/",
+                SAGE_ROOT + "/local/include/python2.7",
+                SAGE_ROOT + "/local/lib/python2.7/site-packages/numpy/core/include/",
+                SAGE_ROOT + "/devel/sage/sage/ext/",
+                SAGE_ROOT + "/devel/sage/",
+                SAGE_ROOT + '/devel/sage/sage/gsl/',
+                ]
+
 setup(ext_modules = ext_modules,
-      include_dirs = ['/home/bober/sage-5.0.beta5/local/include/csage/', '/home/bober/sage-5.0.beta5/local/include/', '/home/bober/sage-5.0.beta5/local/include/python2.7/', '/home/bober/sage-5.0.beta5/local/lib/python2.7/site-packages/numpy/core/include', '/home/bober/sage-5.0.beta5/devel/sage/sage/ext/', '/home/bober/sage-5.0.beta5/devel/sage/', '/home/bober/sage-5.0.beta5/devel/sage/sage/gsl/', '.'],
+      include_dirs = include_dirs,
       cmdclass = {'build_ext' : build_ext})
     
