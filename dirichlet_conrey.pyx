@@ -20,8 +20,15 @@ from sage.all import factor,        \
                      crt,           \
                      mod,           \
                      inverse_mod,   \
-                     multiplicative_order
+                     multiplicative_order, \
+                     pi, \
+                     RR, \
+                     CC
+
+pi = RR(pi)
+
 from sage.modular.dirichlet import DirichletCharacter
+from sage.libs.lcalc.lcalc_Lfunction import Lfunction_D, Lfunction_C
 
 import cmath
 
@@ -301,7 +308,7 @@ cdef class DirichletGroup_conrey:
 
 cdef class DirichletCharacter_conrey:
     cdef long _n        # we will store the number used to create this character,
-    cdef number         # e.g., -1, but for all computations we use _n, which is number % q.
+    cdef _number         # e.g., -1, but for all computations we use _n, which is number % q.
     cdef long q         # the modulus of this character
 
     cdef DirichletGroup_conrey _parent
@@ -311,7 +318,7 @@ cdef class DirichletCharacter_conrey:
             The nth character for the Dirichlet Group parent.
         """
         self._parent = parent
-        self.number = n
+        self._number = n
         self._n = n % parent.q
         self.q = parent.q
 
@@ -577,6 +584,9 @@ cdef class DirichletCharacter_conrey:
             raise NotImplementedError("Right now we only support a precision of 53 bits.")
 
         return self.gauss_sum(a)
+    
+    def number(self):
+        return self._number
 
     def __invert__(self):
         r"""
@@ -727,6 +737,31 @@ cdef class DirichletCharacter_conrey:
         synonym for conductor().
         """
         return self.conductor()
+
+    def Lfunction(self):
+        r"""
+        Return the L-function associated to this character, raising an error
+        if the character is not primitive.
+        """
+
+        if not self.is_primitive():
+            raise TypeError("L-functions only exist for primitive characters.")
+
+        modulus = self._parent.q
+        if self.is_even():
+            a = 0
+        else:
+            a = 1
+
+        Q = RR(modulus/pi).sqrt()
+        poles = []
+        residues = []
+        period = modulus
+        omega = 1.0/( CC(0,1)**a * (CC(modulus)).sqrt()/self.gauss_sum() )
+        
+        coefficients = [self.value(n) for n in xrange(1,modulus+1)]
+
+        return Lfunction_C("", 1, coefficients, period, Q, omega, [.5], [a/2.], poles, residues)
 
     def logvalue(self, long m):
         r"""
@@ -998,6 +1033,9 @@ cdef class DirichletCharacter_conrey:
     cpdef complex value(self, long m):
         return self._parent.chi(self._n, m)
 
+
+    def values(self):
+        return [self.value(n) for n in range(self._parent.q)]
 
     #cdef complex __call__unsafe(self, long m):
     #    return self.parent._chi_unsafe(self._n, m)
