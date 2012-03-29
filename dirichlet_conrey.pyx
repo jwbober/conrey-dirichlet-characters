@@ -10,6 +10,7 @@ from sage.all import factor,        \
                      primitive_root,\
                      euler_phi,     \
                      gcd,           \
+                     lcm,           \
                      exp,           \
                      is_prime,      \
                      DirichletGroup,\
@@ -23,12 +24,10 @@ from sage.all import factor,        \
                      multiplicative_order, \
                      pi, \
                      RR, \
-                     CC
-
-pi = RR(pi)
+                     CC, \
+                     ZZ
 
 from sage.modular.dirichlet import DirichletCharacter
-from sage.libs.lcalc.lcalc_Lfunction import Lfunction_D, Lfunction_C
 
 import cmath
 
@@ -249,7 +248,7 @@ cdef class DirichletGroup_conrey:
 
     def __iter__(self):
         cdef long n = 1
-        while n < self.q:
+        while n <= self.q:
             if self.q_odd == 1 or self.A[(n % self.q_odd) * self.k] != -1:
                 if self.q_even == 1 or n % 2 == 1:
                     yield self._getitem_(n)
@@ -305,6 +304,44 @@ cdef class DirichletGroup_conrey:
 
     cpdef modulus(self):
         return self.q
+
+    cpdef zeta_order(self):
+        r"""
+        Every character in this Dirichlet group takes values in some
+        cyclotomic field `\Q(\zeta_n)`. This function returns the smallest
+        such `n`.
+
+        Warning: We don't actually use this function internally for our table
+        of roots of unity right now, and so, internally, we may use a larger
+        zeta order.
+
+        EXAMPLES::
+
+            sage: from dirichlet_conrey import *
+            sage: G = DirichletGroup_conrey(37)
+            sage: G.zeta_order()
+            36
+
+        TESTS::
+            
+            sage: from dirichlet_conrey import *
+            sage: L = [ZZ.random_element(1, 100) for n in range(10)]
+            sage: for n in L:
+            ...    if DirichletGroup_conrey(n).zeta_order() != DirichletGroup(n).zeta_order():
+            ...        print "wrong answer for n =", n
+        """
+
+        zeta_orders_at_primes = []
+        for j in range(self.k):
+            zeta_orders_at_primes.append(self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1))
+
+        # that deals with all of the odd primes...
+        if self.q_even == 4:
+            zeta_orders_at_primes.append(2)
+        elif self.q_even > 4:
+            zeta_orders_at_primes.append(4)
+
+        return lcm(zeta_orders_at_primes)
 
 cdef class DirichletCharacter_conrey:
     cdef long _n        # we will store the number used to create this character,
@@ -525,6 +562,32 @@ cdef class DirichletCharacter_conrey:
         moduli.append(q_even2)
         return G[crt(indices, moduli)]
 
+    def galois_orbit(self):
+        r"""
+        Return the galois conjugates of this character.
+
+        This is going to be rather inefficient for now.
+
+        TESTS::
+
+            sage: from dirichlet_conrey import *
+            sage: G = DirichletGroup_conrey(56)
+            sage: chi = G[3]
+            sage: set([psi.sage_character() for psi in chi.galois_orbit()]) == set(chi.sage_character().galois_orbit())
+            True
+        """
+
+        L = []
+        N = self._parent.zeta_order()
+        q = self._parent.modulus()
+        for a in range(N):
+            if gcd(a,N) == 1:
+                L.append(power_mod(self._n, a, q))
+
+        return [self._parent[n] for n in set(L)]
+
+
+
 
     cpdef complex gauss_sum(self, long a = 1):
         r"""
@@ -737,31 +800,6 @@ cdef class DirichletCharacter_conrey:
         synonym for conductor().
         """
         return self.conductor()
-
-    def Lfunction(self):
-        r"""
-        Return the L-function associated to this character, raising an error
-        if the character is not primitive.
-        """
-
-        if not self.is_primitive():
-            raise TypeError("L-functions only exist for primitive characters.")
-
-        modulus = self._parent.q
-        if self.is_even():
-            a = 0
-        else:
-            a = 1
-
-        Q = RR(modulus/pi).sqrt()
-        poles = []
-        residues = []
-        period = modulus
-        omega = 1.0/( CC(0,1)**a * (CC(modulus)).sqrt()/self.gauss_sum() )
-        
-        coefficients = [self.value(n) for n in xrange(1,modulus+1)]
-
-        return Lfunction_C("", 1, coefficients, period, Q, omega, [.5], [a/2.], poles, residues)
 
     def logvalue(self, long m):
         r"""
