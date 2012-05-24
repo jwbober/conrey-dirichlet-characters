@@ -11,7 +11,6 @@ from sage.all import factor,        \
                      euler_phi,     \
                      gcd,           \
                      lcm,           \
-                     exp,           \
                      is_prime,      \
                      DirichletGroup,\
                      vector,        \
@@ -32,6 +31,7 @@ from sage.modular.dirichlet import DirichletCharacter
 import cmath
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
+cdef float PI = float(pi)
 
 cdef class DirichletGroup_conrey:
     #
@@ -178,12 +178,12 @@ cdef class DirichletGroup_conrey:
         #
         if self.q_odd > 1:
             for n in range(self.phi_q_odd):
-                self.zeta_powers_odd[n] = exp(twopii * n/<double>self.phi_q_odd)
+                self.zeta_powers_odd[n] = cmath.exp(twopii * n/<double>self.phi_q_odd)
 
         cdef long pow_three = 1
         if self.q_even > 4:
             for n in range(self.q_even/4):
-                self.zeta_powers_even[n] = exp(twopii * n * 4/<double>self.q_even)
+                self.zeta_powers_even[n] = cmath.exp(twopii * n * 4/<double>self.q_even)
 
             for e in range(self.q_even/4):
                 self.B[pow_three] = e
@@ -811,6 +811,51 @@ cdef class DirichletCharacter_conrey:
                                                              # a better way to construct
                                                              # a rational number.
 
+    def Lone(self):
+        r"""
+        Return the L-series of this character evaluated at 1. If the character
+        is trivial, raise an error.
+        """
+        #
+        # This implementation is not optimal, but is simple. When chi is even,
+        # we use the formula
+        #
+        # L(1, chi) = -tau(chi)/q sum_{a=1}^{q-1} chibar(a) log(sin(pi a/q))
+        #
+        # (which is eq 9.8, page 288 in Montgomery-Vaughan)
+        #
+        # while for odd chi we use the formula
+        #
+        # L(1, chi) = pi * i/(tau(chibar) * (2 - chibar(2))) * sum_{a=1}^{q/2} chibar(a)
+
+        cdef complex S = 0
+        cdef long p
+
+        if self.is_trivial():
+            raise ArithmeticError
+
+        if not self.is_primitive():
+            psi = self.primitive_character()
+            S = psi.Lone()
+            for n in range(self._parent.k):
+                p = self._parent.primes[n]
+                S = S * (1 - psi(p)/p)
+            if self._parent.q % 2 == 0:
+                S = S * (1 - psi(2)/2)
+            return S
+
+        chibar = self.__invert__()
+        cdef long q = self._parent.q
+        if self.is_even():
+            for a in range(1, q):
+                S = S + chibar(a) * cmath.log(cmath.sin(PI * a/float(q)))
+            return -S * self.gauss_sum()/q
+        else:
+            for a in range(1, q):
+                S = S + a * chibar(a)
+            return S * PI * 1.0j * self.gauss_sum()/(q*q)
+                
+            
     def modulus(self):
         r"""
         Return the modulus of this charater as a Python integer.
