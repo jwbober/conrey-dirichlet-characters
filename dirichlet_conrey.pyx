@@ -5,6 +5,7 @@
 include "interrupt.pxi"  # ctrl-c interrupt block support
 include "stdsage.pxi"  # ctrl-c interrupt block support
 include "cdefs.pxi"
+from libc.stdlib cimport malloc, free
 
 from sage.all import factor,        \
                      primitive_root,\
@@ -1122,3 +1123,4 @@ cdef class DirichletCharacter_conrey:
 
     #cdef complex __call__unsafe(self, long m):
     #    return self.parent._chi_unsafe(self._n, m)
+
