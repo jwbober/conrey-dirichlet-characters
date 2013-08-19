@@ -4,7 +4,8 @@
 
 # Build using 'python setup.py'
 import distutils.sysconfig, os, sys
-from distutils.core import setup, Extension
+#from distutils.core import setup, Extension
+from setuptools import setup, Extension
 from Cython.Distutils import build_ext
 
 if not os.environ.has_key('SAGE_ROOT'):
@@ -34,7 +35,14 @@ include_dirs = [SAGE_ROOT + "/local/include/csage/",
                 SAGE_ROOT + '/devel/sage/sage/gsl/',
                 ]
 
-setup(ext_modules = ext_modules,
+setup(name='DirichletConrey',
+      version='0.1',
+      description='desc',
+      author='J. W. Bober',
+      author_email='my@email.com',
+      url='http://github.com/jwbober/conrey-dirichlet-characters',
+      ext_modules = ext_modules,
       include_dirs = include_dirs,
       cmdclass = {'build_ext' : build_ext})
+
     
