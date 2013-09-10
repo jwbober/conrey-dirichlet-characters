@@ -6,6 +6,8 @@ include "interrupt.pxi"  # ctrl-c interrupt block support
 include "stdsage.pxi"  # ctrl-c interrupt block support
 include "cdefs.pxi"
 
+from libc.stdlib cimport malloc, free
+
 from sage.all import factor,        \
                      primitive_root,\
                      euler_phi,     \
@@ -855,6 +857,23 @@ cdef class DirichletCharacter_conrey:
                 S = S + a * chibar(a)
             return S * PI * 1.0j * self.gauss_sum()/(q*q)
                 
+    cpdef max_sum(self, return_location = False):
+        """
+        return the maximum of the character sum and its location.
+        """
+        
+        cdef complex S = 0
+        cdef float absmax = 0
+        cdef complex max = 0
+        cdef long m = 0
+        for n in range(self.q/2 + 1):
+            S = S + self.value(n)
+            if abs(S) > absmax:
+                max = S
+                absmax = abs(S)
+                m = n
+
+        return max, m
             
     def modulus(self):
         r"""
@@ -1112,6 +1131,16 @@ cdef class DirichletCharacter_conrey:
 
         exponents = M(exponents)
         return DirichletCharacter(self._parent.standard_dirichlet_group(), exponents)
+
+    cpdef sum(self, long m):
+        """
+        return the sum of chi up to n
+        """
+        cdef complex S = 0
+        for n in range(m + 1):
+            S = S + self.value(n)
+
+        return S
 
     cpdef complex value(self, long m):
         return self._parent.chi(self._n, m)
