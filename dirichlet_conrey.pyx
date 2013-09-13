@@ -26,7 +26,9 @@ from sage.all import factor,        \
                      pi, \
                      RR, \
                      CC, \
-                     ZZ
+                     ZZ, \
+                     round, \
+                     imag
 
 from sage.modular.dirichlet import DirichletCharacter
 
@@ -344,6 +346,132 @@ cdef class DirichletGroup_conrey:
             zeta_orders_at_primes.append(4)
 
         return lcm(zeta_orders_at_primes)
+
+    cpdef from_sage_character(self, chi):
+        r"""
+        Given a 'sage character' (that is, a Dirichlet character in the
+        standard sage format), return the character that correponds to it.
+
+        EXAMPLES::
+            sage: from dirichlet_conrey import *
+            sage: q = ZZ.random_element(2, 100)
+            sage: q = q - 1 + q%2
+            sage: G = DirichletGroup_conrey(q)
+            sage: G[1] == G.from_sage_character(G[1].sage_character())
+            True
+            sage: G[2] == G.from_sage_character(G[2].sage_character())
+            True
+            sage: x = ZZ.random_element(1,q)
+            sage: while gcd(x,q) > 1:
+            ...    x = ZZ.random_element(1,q)
+            sage: G[x] == G.from_sage_character(G[x].sage_character())
+            True
+            sage: q = 2 * q
+            sage: G = DirichletGroup_conrey(q)
+            sage: G[1] == G.from_sage_character(G[1].sage_character())
+            True
+            sage: x = ZZ.random_element(1,q)
+            sage: while gcd(x,q) > 1:
+            ...    x = ZZ.random_element(1,q)
+            sage: G[x] == G.from_sage_character(G[x].sage_character())
+            True
+            sage: q = 4 * q
+            sage: G = DirichletGroup_conrey(q)
+            sage: G[1] == G.from_sage_character(G[1].sage_character())
+            True
+            sage: x = ZZ.random_element(1,q)
+            sage: while gcd(x,q) > 1:
+            ...    x = ZZ.random_element(1,q)
+            sage: G[x] == G.from_sage_character(G[x].sage_character())
+            True
+            sage: q = 8 * q
+            sage: G = DirichletGroup_conrey(q)
+            sage: G[1] == G.from_sage_character(G[1].sage_character())
+            True
+            sage: x = ZZ.random_element(1,q)
+            sage: while gcd(x,q) > 1:
+            ...    x = ZZ.random_element(1,q)
+            sage: G[x] == G.from_sage_character(G[x].sage_character())
+            True
+            sage: q = 16 * q
+            sage: G = DirichletGroup_conrey(q)
+            sage: G[1] == G.from_sage_character(G[1].sage_character())
+            True
+            sage: x = ZZ.random_element(1,q)
+            sage: while gcd(x,q) > 1:
+            ...    x = ZZ.random_element(1,q)
+            sage: G[x] == G.from_sage_character(G[x].sage_character())
+            True
+
+
+
+
+
+
+
+        """
+        #
+        # At odd prime powers, it is relatively easy to construct a character
+        # in our format from the sage character. For even prime powers it is
+        # a little bit trickier, but not much worse.
+        #
+        # So to construct our character, we will decompose the sage character
+        # into a product of characters to prime power modulus, do the translation
+        # there, and then glue everything back together.
+        #
+        if chi.modulus() != self.q:
+            raise ArithmeticError("The character we are translating from must have the same modulus as this Dirichlet group.")
+
+        decomposition = chi.decomposition()
+        n_even = 1
+
+        # We deal with the even part first. First of all, we strip off the
+        # even modulus from the decomposition of the character.
+
+        if self.q_even > 1:
+            psi, decomposition = decomposition[0], decomposition[1:]
+
+        # Now the even part splits into 3 cases depending on how
+        # many times 2 divides q. (i.e. 1 time, 2 times, or more than 2
+        # times.)
+
+        # if 2 divides q just once, the relevant character mod 2 is
+        # always the trivial one
+        if self.q_even == 2:
+            n_even = 1
+
+        # if 2 divides q twice, then we just need to check if the
+        # part at two is trivial or not.
+        elif self.q_even == 4:
+            if psi.is_trivial():
+                n_even = 1
+            else:
+                n_even = 3
+
+        # When 2 divides 8, we want to somehow find the exponents
+        # of the value of the character on 3 and -3, and use these
+        # to construct the character that we are interested in.
+        #
+        # This is going to be ugly...
+        elif self.q_even > 4:
+            psi3_exponent = round(imag(CC(psi(3)).log() * (self.q_even/4)/(2*pi)))
+            n_even = power_mod(3, psi3_exponent, ZZ(self.q_even))
+            if psi(3) != psi(-3):
+                n_even = self.q_even - n_even
+
+        # I think this might work...
+        exponent_vector = [ZZ(psi.element()[0]) for psi in decomposition]
+        odd_primes = [ZZ(self.primes[j]) for j in range(self.k)]
+        generators = [ZZ(self.generators[j]) for j in range(self.k)]
+        n_odd = crt(
+            [power_mod(g, a, pp) for (g,a,pp) in zip(generators, exponent_vector, odd_primes)],
+             odd_primes)
+
+        if n_odd == 0:
+            n_odd = 1
+        n = crt(n_odd, n_even, ZZ(self.q_odd), ZZ(self.q_even))
+
+        return self[n]
 
 cdef class DirichletCharacter_conrey:
     cdef long _n        # we will store the number used to create this character,
