@@ -101,6 +101,9 @@ cdef class DirichletGroup_conrey:
     cdef _standard_dirichlet_group
 
     def __cinit__(self, modulus, basering = None):
+        if modulus <= 0:
+            except ArithmeticError("The modulus of a Dirichlet group must be a positive integer.")
+
         try:
             self.q = modulus
         except OverflowError:
@@ -354,12 +357,24 @@ cdef class DirichletGroup_conrey:
 
         EXAMPLES::
             sage: from dirichlet_conrey import *
-            sage: q = ZZ.random_element(2, 100)
+            sage: q = ZZ.random_element(2, 500)
             sage: q = q - 1 + q%2
             sage: G = DirichletGroup_conrey(q)
             sage: G[1] == G.from_sage_character(G[1].sage_character())
             True
             sage: G[2] == G.from_sage_character(G[2].sage_character())
+            True
+            sage: x = ZZ.random_element(1,q)
+            sage: while gcd(x,q) > 1:
+            ...    x = ZZ.random_element(1,q)
+            sage: if G[x] == G.from_sage_character(G[x].sage_character()):
+            ...    print True
+            ... else:
+            ...    print q, x
+            True
+            sage: q = 2 * q
+            sage: G = DirichletGroup_conrey(q)
+            sage: G[1] == G.from_sage_character(G[1].sage_character())
             True
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
@@ -375,7 +390,7 @@ cdef class DirichletGroup_conrey:
             ...    x = ZZ.random_element(1,q)
             sage: G[x] == G.from_sage_character(G[x].sage_character())
             True
-            sage: q = 4 * q
+            sage: q = 2 * q
             sage: G = DirichletGroup_conrey(q)
             sage: G[1] == G.from_sage_character(G[1].sage_character())
             True
@@ -384,7 +399,7 @@ cdef class DirichletGroup_conrey:
             ...    x = ZZ.random_element(1,q)
             sage: G[x] == G.from_sage_character(G[x].sage_character())
             True
-            sage: q = 8 * q
+            sage: q = 2 * q
             sage: G = DirichletGroup_conrey(q)
             sage: G[1] == G.from_sage_character(G[1].sage_character())
             True
@@ -393,22 +408,6 @@ cdef class DirichletGroup_conrey:
             ...    x = ZZ.random_element(1,q)
             sage: G[x] == G.from_sage_character(G[x].sage_character())
             True
-            sage: q = 16 * q
-            sage: G = DirichletGroup_conrey(q)
-            sage: G[1] == G.from_sage_character(G[1].sage_character())
-            True
-            sage: x = ZZ.random_element(1,q)
-            sage: while gcd(x,q) > 1:
-            ...    x = ZZ.random_element(1,q)
-            sage: G[x] == G.from_sage_character(G[x].sage_character())
-            True
-
-
-
-
-
-
-
         """
         #
         # At odd prime powers, it is relatively easy to construct a character
@@ -461,17 +460,24 @@ cdef class DirichletGroup_conrey:
 
         # I think this might work...
         exponent_vector = [ZZ(psi.element()[0]) for psi in decomposition]
-        odd_primes = [ZZ(self.primes[j]) for j in range(self.k)]
+        odd_prime_powers = [ZZ(self.primes[j])**ZZ(self.exponents[j]) for j in range(self.k)]
         generators = [ZZ(self.generators[j]) for j in range(self.k)]
         n_odd = crt(
-            [power_mod(g, a, pp) for (g,a,pp) in zip(generators, exponent_vector, odd_primes)],
-             odd_primes)
+            [power_mod(g, a, pp) for (g,a,pp) in zip(generators, exponent_vector, odd_prime_powers)],
+             odd_prime_powers)
 
         if n_odd == 0:
             n_odd = 1
         n = crt(n_odd, n_even, ZZ(self.q_odd), ZZ(self.q_even))
 
         return self[n]
+
+def test_conversion(q):
+    G = DirichletGroup_conrey(q)
+    for chi in G:
+        if not G.from_sage_character(chi.sage_character()) == chi:
+            print "Failure for q = {}, chi number {}".format(q, chi.number())
+            break
 
 cdef class DirichletCharacter_conrey:
     cdef long _n        # we will store the number used to create this character,
