@@ -25,8 +25,7 @@ from sage.all import factor,        \
                      RR, \
                      CC, \
                      ZZ, \
-                     diagonal_matrix, \
-                     Mod
+                     diagonal_matrix
 
 from sage.modular.dirichlet import DirichletCharacter
 
@@ -356,7 +355,6 @@ cdef class DirichletGroup_conrey:
             gj = self.generators[j]
             uj = inverse_mod(qj,pj)
             gj = 1 + qj*uj*(gj-1) % self.q
-            assert Mod(gj,self.q).multiplicative_order() == w[j]
             g.append(gj)
         if self.q_even >= 4:
             w.append(2)
@@ -364,13 +362,11 @@ cdef class DirichletGroup_conrey:
             g2 = -1
             u2 = inverse_mod(q2, p2)
             g2 = 1 + q2*u2*(g2-1) % self.q
-            assert Mod(g2,self.q).multiplicative_order() == 2
             g.append(g2)
         if self.q_even > 4:
             w.append(self.q_even//4)
             g2 = 5
             g2 = 1 + q2*u2*(g2-1) % self.q
-            assert Mod(g2,self.q).multiplicative_order() == self.q_even//4
             g.append(g2)
         """
         then compute the Smith normal form
