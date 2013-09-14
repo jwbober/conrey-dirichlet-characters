@@ -447,17 +447,10 @@ cdef class DirichletGroup_conrey:
             ...        print "wrong answer for n =", n
         """
 
-        zeta_orders_at_primes = []
-        for j in range(self.k):
-            zeta_orders_at_primes.append(self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1))
-
-        # that deals with all of the odd primes...
-        if self.q_even == 4:
-            zeta_orders_at_primes.append(2)
-        elif self.q_even > 4:
-            zeta_orders_at_primes.append(4)
-
-        return lcm(zeta_orders_at_primes)
+        if self.q > 2:
+            return self.invariants()[0]
+        else:
+            return 1
 
 cdef class DirichletCharacter_conrey:
     cdef long _n        # we will store the number used to create this character,
