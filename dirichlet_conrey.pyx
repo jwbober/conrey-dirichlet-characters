@@ -24,7 +24,9 @@ from sage.all import factor,        \
                      pi, \
                      RR, \
                      CC, \
-                     ZZ
+                     ZZ, \
+                     diagonal_matrix, \
+                     Mod
 
 from sage.modular.dirichlet import DirichletCharacter
 
@@ -57,6 +59,8 @@ cdef class DirichletGroup_conrey:
     cdef long * primes      # a list of the odd prime factors of the modulus
     cdef long * exponents   # a list of the exponents of the odd prime factors in the factorization
     cdef long * generators  # a primitive root for each odd prime factor
+
+    cdef long precomp       # shall we precompute logs ?
 
     cdef long * A           # exponent vectors:
                             # for each m coprime to q_odd we store an array
@@ -95,6 +99,8 @@ cdef class DirichletGroup_conrey:
     cdef complex * zeta_powers_even # for the even part of the character
     
     cdef _standard_dirichlet_group
+    cdef _invariants
+    cdef _gens
 
     def __cinit__(self, modulus, basering = None):
         try:
@@ -102,6 +108,8 @@ cdef class DirichletGroup_conrey:
         except OverflowError:
             raise NotImplementedError("Currently this implementation does not allow a modulus that large.")
             
+        self.precomp = (self.q < 1000) # should test to find right value
+
         self.q_even = 1
         self.q_odd = self.q
         while self.q_odd % 2 == 0:
@@ -118,10 +126,11 @@ cdef class DirichletGroup_conrey:
                 self.exponents[n] = X[n][1]
             self.generators = <long *>malloc(self.k * sizeof(long))
             self.PHI = <long *>malloc(self.k * sizeof(long))
-            self.A = <long*>malloc(self.q_odd * self.k * sizeof(long))
-            self.zeta_powers_odd = <complex*>malloc(self.q * sizeof(complex))
+            if self.precomp:
+                self.A = <long*>malloc(self.q_odd * self.k * sizeof(long))
+                self.zeta_powers_odd = <complex*>malloc(self.q * sizeof(complex))
 
-        if self.q_even > 4:
+        if self.precomp and self.q_even > 4:
             # We are only going to use zeta_powers_even if q_even is large enough.
             # When q_even == 2, it would just be {1}, and when q_even == 4, it
             # would just be {1,-1}.
@@ -153,19 +162,21 @@ cdef class DirichletGroup_conrey:
             self.generators[j] = g
             phi = self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1)
             self.PHI[j] = self.phi_q_odd/phi
-            a = 1
-            for l in range(phi):
-                for m in range(a, self.q_odd, x):
-                    self.A[m * self.k + j] = l
-                a = (a * g) % x
+            if self.precomp:
+                a = 1
+                for l in range(phi):
+                    for m in range(a, self.q_odd, x):
+                        self.A[m * self.k + j] = l
+                    a = (a * g) % x
         #
         # Store a flag in A for each m that is not coprime to q_odd.
         # (This will save on expensive gcd computations later.)
         #
-        if self.q_odd > 1:
-            for m in range(self.q_odd):
-                if gcd(m,self.q_odd) > 1:
-                    self.A[m * self.k] = -1
+        if self.precomp:
+            if self.q_odd > 1:
+                for m in range(self.q_odd):
+                    if gcd(m,self.q_odd) > 1:
+                        self.A[m * self.k] = -1
 
         #
         # Compute a table of powers of the root of unity. This will
@@ -176,12 +187,12 @@ cdef class DirichletGroup_conrey:
         # We will _need_ to not do this later when allowing very
         # large moduli.
         #
-        if self.q_odd > 1:
+        if self.precomp and self.q_odd > 1:
             for n in range(self.phi_q_odd):
                 self.zeta_powers_odd[n] = cmath.exp(twopii * n/<double>self.phi_q_odd)
 
         cdef long pow_three = 1
-        if self.q_even > 4:
+        if self.precomp and self.q_even > 4:
             for n in range(self.q_even/4):
                 self.zeta_powers_even[n] = cmath.exp(twopii * n * 4/<double>self.q_even)
 
@@ -203,10 +214,14 @@ cdef class DirichletGroup_conrey:
             - (anything else?)
         """
         cdef long x = 0
-        for j in range(self.k):
-            x += self.A[m * self.k + j]*self.A[n * self.k + j]*self.PHI[j]
-            x = x % self.phi_q_odd
-        return x;
+        if self.precomp:
+            for j in range(self.k):
+                x += self.A[m * self.k + j]*self.A[n * self.k + j]*self.PHI[j]
+                x = x % self.phi_q_odd
+            return x;
+        else:
+            raise NotImplementedError
+            
 
     cpdef long _chi_even_exponent(self, long m, long n):
         r"""
@@ -216,12 +231,18 @@ cdef class DirichletGroup_conrey:
             - self.q_even > 4
             - m and n are odd
         """
-        cdef long exponent = self.B[m]*self.B[n]
-        if self.B[m-1] == -1 and self.B[n-1] == -1:
-            exponent += self.q_even/8
-        return exponent % (self.q_even/4)
+        cdef long exponent
+        if self.precomp:
+            exponent = self.B[m]*self.B[n]
+            if self.B[m-1] == -1 and self.B[n-1] == -1:
+                exponent += self.q_even/8
+            return exponent % (self.q_even/4)
+        else:
+            raise NotImplementedError
 
     cpdef complex chi(self, long m, long n):
+        if not self.precomp:
+            raise NotImplementedError
         cdef complex odd_part = 1
         cdef complex even_part = 1
         if self.q_even > 1:
@@ -248,11 +269,17 @@ cdef class DirichletGroup_conrey:
 
     def __iter__(self):
         cdef long n = 1
-        while n <= self.q:
-            if self.q_odd == 1 or self.A[(n % self.q_odd) * self.k] != -1:
-                if self.q_even == 1 or n % 2 == 1:
+        if self.precomp:
+            while n <= self.q:
+                if self.q_odd == 1 or self.A[(n % self.q_odd) * self.k] != -1:
+                    if self.q_even == 1 or n % 2 == 1:
+                        yield self._getitem_(n)
+                n = n + 1
+        else:
+            while n <= self.q:
+                if gcd(n,self.q) == 1:
                     yield self._getitem_(n)
-            n = n + 1
+                n = n + 1
 
     def primitive_characters(self):
         for chi in self:
@@ -304,6 +331,75 @@ cdef class DirichletGroup_conrey:
 
     cpdef modulus(self):
         return self.q
+
+    cpdef order(self):
+        return self.phi_q
+
+    cpdef _gen_invariants(self):
+        """
+        compute elementary divisors structure of the group
+        first make a list w of cyclic components over primes
+        and lift local generators
+          gj == g[j] mod pj
+          gj == 1    mod qj, qj = q//pj
+          uj qj + vj pj = 1
+          -> gj = uj qj g[j] + vj pj = 1 + uj qj (g[j]-1)
+        """
+        w,g = [], []
+        for j in range(self.k):
+            p,e = self.primes[j], self.exponents[j]
+            pj = p**(e - 1)
+            w.append(pj*(p-1)) # phi(p**e)
+            pj *= p
+            qj = self.q//pj
+            assert qj*pj == self.q
+            gj = self.generators[j]
+            uj = inverse_mod(qj,pj)
+            gj = 1 + qj*uj*(gj-1) % self.q
+            assert Mod(gj,self.q).multiplicative_order() == w[j]
+            g.append(gj)
+        if self.q_even >= 4:
+            w.append(2)
+            p2, q2 = self.q_even, self.q_odd
+            g2 = -1
+            u2 = inverse_mod(q2, p2)
+            g2 = 1 + q2*u2*(g2-1) % self.q
+            assert Mod(g2,self.q).multiplicative_order() == 2
+            g.append(g2)
+        if self.q_even > 4:
+            w.append(self.q_even//4)
+            g2 = 5
+            g2 = 1 + q2*u2*(g2-1) % self.q
+            assert Mod(g2,self.q).multiplicative_order() == self.q_even//4
+            g.append(g2)
+        """
+        then compute the Smith normal form
+        and perform base change
+        """
+        k = len(w)
+        W = diagonal_matrix(ZZ,w)
+        d,u,v = W.smith_form()
+        gens, inv = [], []
+        u = u.inverse()
+        for j in range(k-1,-1,-1):
+            if d[j,j]>1:
+                inv.append(d[j,j])
+                s = 1
+                for l in range(k):
+                    s = s * g[l]**u[l,j] % self.q
+                gens.append(s)
+        self._gens = gens
+        self._invariants = inv
+
+    def gens(self):
+        if self._gens is None:
+            self._gen_invariants()
+        return tuple(self._gens)
+
+    def invariants(self):
+        if self._invariants is None:
+            self._gen_invariants()
+        return tuple(self._invariants)
 
     cpdef zeta_order(self):
         r"""
