@@ -25,7 +25,8 @@ from sage.all import factor,        \
                      RR, \
                      CC, \
                      ZZ, \
-                     diagonal_matrix
+                     diagonal_matrix, \
+                     Mod
 
 from sage.modular.dirichlet import DirichletCharacter
 
@@ -47,6 +48,13 @@ cdef class DirichletGroup_conrey:
     # it would be possible to remove the last three words from the
     # above paragraph.
     #
+    # Pascal >   The answer to the above question is YES. Just
+    #        > do a p-adic decomposition (keyword Pohlig-Hellman)
+    #        > of the result.
+    #        >   In general, there sould be a mix of precomputed
+    #        > logs for small primes (to any power) and discrete
+    #        > logs computations for large primes.
+    #        > This is a TODO.
 
     cdef long q             # the modulus
                             
@@ -219,7 +227,13 @@ cdef class DirichletGroup_conrey:
                 x = x % self.phi_q_odd
             return x;
         else:
-            raise NotImplementedError
+            for j in range(self.k):
+                pj =  self.primes[j]**self.exponents[j]
+                gj = Mod(self.generators[j],pj)
+                logm = Mod(m,pj).log(gj)
+                logn = Mod(n,pj).log(gj)
+                x = x + self.PHI[j]*logm*logn % self.phi_q_odd
+            return x
             
 
     cpdef long _chi_even_exponent(self, long m, long n):
@@ -237,8 +251,18 @@ cdef class DirichletGroup_conrey:
                 exponent += self.q_even/8
             return exponent % (self.q_even/4)
         else:
-            raise NotImplementedError
-
+            if self.q_even > 2:
+                if m % 4 == 3 and n % 4 == 3:
+                    exponent = self.q_even//8
+                if self.q_even > 4:
+                    g2 = Mod(5,self.q_even)
+                    logm = Mod(m,self.q_even).log(g2)
+                    logn = Mod(n,self.q_even).log(g2)
+                    exponent = logn*logn*self.q_even//4
+                return exponent % (self.q_even/4)
+            else:
+                return 0
+            
     cpdef complex chi(self, long m, long n):
         if not self.precomp:
             raise NotImplementedError
@@ -898,6 +922,8 @@ cdef class DirichletCharacter_conrey:
         Return log(chi(m))/(2 pi i) as a rational number; i.e., return a/b
         so that chi(m) = e(a/b). 
         """
+        if gcd(m,self._parent.q) != 1:
+            return -1
         cdef long exponent = self.exponent(m)
         return Integer(exponent)/Integer(self._parent.phi_q) # TODO: there is probably
                                                              # a better way to construct
