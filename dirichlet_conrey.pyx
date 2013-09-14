@@ -93,7 +93,7 @@ cdef class DirichletGroup_conrey:
                             # for each odd m, 0 <= m < q_even, we will compute B
                             # so that
                             # 
-                            #   m == B[m-1] * 3**B[m] mod q_even,
+                            #   m == B[m-1] * 5**B[m] mod q_even,
                             # 
                             # where B[m-1] = +- 1 and 0 <= B[m] < q_even/4
 
@@ -115,14 +115,16 @@ cdef class DirichletGroup_conrey:
 
     def __cinit__(self, modulus, basering = None):
         if modulus <= 0:
-            except ArithmeticError("The modulus of a Dirichlet group must be a positive integer.")
+            raise ArithmeticError("The modulus of a Dirichlet group must be a positive integer.")
 
         try:
             self.q = modulus
         except OverflowError:
             raise NotImplementedError("Currently this implementation does not allow a modulus that large.")
             
-        self.precomp = (self.q < 1000) # should test to find right value
+        #self.precomp = (self.q < 100000) # should test to find right value
+
+        self.precomp = 1
 
         self.q_even = 1
         self.q_odd = self.q
@@ -205,18 +207,18 @@ cdef class DirichletGroup_conrey:
             for n in range(self.phi_q_odd):
                 self.zeta_powers_odd[n] = cmath.exp(twopii * n/<double>self.phi_q_odd)
 
-        cdef long pow_three = 1
+        cdef long pow_five = 1
         if self.precomp and self.q_even > 4:
             for n in range(self.q_even/4):
                 self.zeta_powers_even[n] = cmath.exp(twopii * n * 4/<double>self.q_even)
 
             for e in range(self.q_even/4):
-                self.B[pow_three] = e
-                self.B[pow_three - 1] = 1
-                self.B[self.q_even - pow_three] = e
-                self.B[self.q_even - pow_three - 1] = -1
-                pow_three = pow_three * 3
-                pow_three = pow_three % self.q_even
+                self.B[pow_five] = e
+                self.B[pow_five - 1] = 1
+                self.B[self.q_even - pow_five] = e
+                self.B[self.q_even - pow_five - 1] = -1
+                pow_five = pow_five * 5
+                pow_five = pow_five % self.q_even
 
     cpdef long _chi_odd_exponent(self, long m, long n):
         r"""
@@ -251,7 +253,7 @@ cdef class DirichletGroup_conrey:
             - self.q_even > 4
             - m and n are odd
         """
-        cdef long exponent
+        cdef long exponent = 0
         if self.precomp:
             exponent = self.B[m]*self.B[n]
             if self.B[m-1] == -1 and self.B[n-1] == -1:
@@ -263,9 +265,13 @@ cdef class DirichletGroup_conrey:
                     exponent = self.q_even//8
                 if self.q_even > 4:
                     g2 = Mod(5,self.q_even)
+                    if(m % 4 == 3):
+                        m = -m
+                    if(n % 4 == 3):
+                        n = -n
                     logm = Mod(m,self.q_even).log(g2)
                     logn = Mod(n,self.q_even).log(g2)
-                    exponent = logn*logn*self.q_even//4
+                    exponent += logn*logn*self.q_even//4
                 return exponent % (self.q_even/4)
             else:
                 return 0
@@ -515,7 +521,10 @@ cdef class DirichletGroup_conrey:
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
             ...    x = ZZ.random_element(1,q)
-            sage: G[x] == G.from_sage_character(G[x].sage_character())
+            sage: if G[x] == G.from_sage_character(G[x].sage_character()):
+            ...    print True
+            ... else:
+            ...    print q, x
             True
         """
         #
@@ -556,15 +565,15 @@ cdef class DirichletGroup_conrey:
             else:
                 n_even = 3
 
-        # When 2 divides 8, we want to somehow find the exponents
-        # of the value of the character on 3 and -3, and use these
+        # When 8 divides q, we want to somehow find the exponents
+        # of the value of the character on 5 and -5, and use these
         # to construct the character that we are interested in.
         #
         # This is going to be ugly...
         elif self.q_even > 4:
-            psi3_exponent = round(imag(CC(psi(3)).log() * (self.q_even/4)/(2*pi)))
-            n_even = power_mod(3, psi3_exponent, ZZ(self.q_even))
-            if psi(3) != psi(-3):
+            psi5_exponent = round(imag(CC(psi(5)).log() * (self.q_even/4)/(2*pi)))
+            n_even = power_mod(5, psi5_exponent, ZZ(self.q_even))
+            if psi(5) != psi(-5):
                 n_even = self.q_even - n_even
 
         # I think this might work...
@@ -993,13 +1002,6 @@ cdef class DirichletCharacter_conrey:
             return False
         elif q_even == 4:
             return n == 3
-        elif q_even == 8:
-            if B[n] % 2 == 1 and B[n-1] == 1:
-                return True
-            elif B[n] % 2 == 0 and B[n-1] == -1:
-                return True
-            else:
-                return False
         else:
             return B[n] % 2 == 1
 
@@ -1277,48 +1279,63 @@ cdef class DirichletCharacter_conrey:
         r"""
         Return the conductor and the index of the primitive
         character associated to the even part of the modulus.
+
+        We return a pair (n, q), where q is the even part of the
+        conductor of chi and n in the index of the even part of the
+        primitive character inducing chi.
         """
         cdef long q_even = self._parent.q_even
         cdef long * B = self._parent.B
         cdef long n = self._n % q_even
         cdef long e, dlog
-        if q_even == 1:
-            return (1,1)
-        elif q_even == 2:
-            return (1,1)
-        elif q_even == 4:
-            if n == 3:
+
+        # We basically do everything by hand.
+
+        if q_even == 1:                 # If q is odd, there is no even
+            return (1,1)                # part of the character,
+        
+        elif q_even == 2:               # while if 2 is only divisible by 2
+            return (1,1)                # the inducing character must be
+                                        # trivial.
+
+        elif q_even == 4:               # When q_even is 4, the conductor
+            if n == 3:                  # just depends on n mod 4
                 return (3,4)
             else:
                 return (1,1)
         elif q_even == 8:
-            if B[n] % 2 == 1 and B[n-1] == 1:
-                return (n,8)
-            elif B[n] % 2 == 0 and B[n-1] == -1:
-                return (n,8)
-            elif n == 1:
+            if n == 1:
                 return (1,1)
+            elif n == 3:
+                return (3,8)
+            elif n == 5:
+                return (5,8)
             else:
                 return (3,4)
         else:
-            if n == 1:
-                return (1,1)
-            elif n == q_even - 1:
-                return (7, 8) # special case for primitive character mod 8
-            elif n == q_even/2 - 1:
-                return (3,4)  # special case for primitive character mod 4
-            dlog = B[n]
-            e = 0
-            while dlog % 2 == 0:
-                dlog /= 2
-                e = e + 1
-            conductor = q_even/(2**e)
-            if B[n - 1] == 1:
-                index = power_mod(3, dlog, conductor)
-                return (index, conductor)
-            else:
-                index = -power_mod(3, dlog, conductor)
-                return (index, conductor)
+            #if n == 1:
+            #    return (1,1)
+            #elif n == q_even - 1:
+            #   return (7, 8) # special case for primitive character mod 8
+            #elif n == q_even/2 - 1:
+            #    return (3,4)  # special case for primitive character mod 4
+            alpha = B[n]
+            epsilon = B[n-1]
+            if alpha == 0:
+                if epsilon == 1:
+                    return (1,1)
+                else:
+                    return (3,4)
+            f = 0
+            m = alpha
+            while m % 2 == 0:
+                m /= 2
+                f = f + 1
+            conductor = q_even/(2**f)
+            index = power_mod(5, m, conductor)
+            if epsilon == -1:
+                index = conductor - index
+            return (index, conductor)
 
     def __repr__(self):
         return "Dirichlet character with index %d modulo %d" % (self._n, self._parent.q)
