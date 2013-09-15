@@ -113,7 +113,7 @@ cdef class DirichletGroup_conrey:
     cdef _invariants
     cdef _gens
 
-    def __cinit__(self, modulus, basering = None):
+    def __cinit__(self, modulus, basering = None, precompute = None):
         if modulus <= 0:
             raise ArithmeticError("The modulus of a Dirichlet group must be a positive integer.")
 
@@ -122,9 +122,11 @@ cdef class DirichletGroup_conrey:
         except OverflowError:
             raise NotImplementedError("Currently this implementation does not allow a modulus that large.")
             
-        #self.precomp = (self.q < 100000) # should test to find right value
-
-        self.precomp = 1
+        if precompute is None:
+            self.precomp = (self.q < 200) # should test to find right value
+            #self.precomp = 1
+        else:
+            self.precomp = precompute
 
         self.q_even = 1
         self.q_odd = self.q
@@ -157,7 +159,7 @@ cdef class DirichletGroup_conrey:
             self.B = <long*>malloc(self.q_even * sizeof(long))
             self.zeta_powers_even = <complex*>malloc(self.q_even/4 * sizeof(complex))
 
-    def __init__(self, modulus, basering = None):
+    def __init__(self, modulus, basering = None, precompute = False):
         # Once we've hit this stage, all of our arrays are allocated,
         # and both self.prime and self.exponents contain the right things.
         #
@@ -220,6 +222,19 @@ cdef class DirichletGroup_conrey:
                 pow_five = pow_five * 5
                 pow_five = pow_five % self.q_even
 
+    cdef complex zeta_power_odd(self, long n):
+        if self.precomp:
+            return self.zeta_powers_odd[n]
+        else:
+            return cmath.exp(twopii * n/<double>self.phi_q_odd)
+
+    cdef complex zeta_power_even(self, long n):
+        if self.precomp and self.q_even > 4:
+            return self.zeta_powers_even[n]
+        else:
+            return cmath.exp(twopii * n * 4/<double>self.q_even)
+
+
     cpdef long _chi_odd_exponent(self, long m, long n):
         r"""
         BE CAREFUL CALLING THIS. It implicitly assumes:
@@ -271,14 +286,15 @@ cdef class DirichletGroup_conrey:
                         n = -n
                     logm = Mod(m,self.q_even).log(g2)
                     logn = Mod(n,self.q_even).log(g2)
-                    exponent += logn*logn*self.q_even//4
+                    #exponent += logn*logm*self.q_even//4
+                    exponent += logn*logm
                 return exponent % (self.q_even/4)
             else:
                 return 0
             
     cpdef complex chi(self, long m, long n):
-        if not self.precomp:
-            raise NotImplementedError
+        #if not self.precomp:
+        #    raise NotImplementedError
         cdef complex odd_part = 1
         cdef complex even_part = 1
         if self.q_even > 1:
@@ -292,14 +308,22 @@ cdef class DirichletGroup_conrey:
                 else:
                     even_part = 1
             else:
-                even_part = self.zeta_powers_even[self._chi_even_exponent(m % self.q_even, n % self.q_even)]
+                #even_part = self.zeta_powers_even[self._chi_even_exponent(m % self.q_even, n % self.q_even)]
+                even_part = self.zeta_power_even(self._chi_even_exponent(m % self.q_even, n % self.q_even))
         if self.q_odd > 1:
             m = m % self.q_odd
             n = n % self.q_odd
-            if self.A[m * self.k] == -1 or self.A[n * self.k] == -1:
-                odd_part = 0;
+            if self.precomp:
+                if self.A[m * self.k] == -1 or self.A[n * self.k] == -1:
+                    odd_part = 0;
+                else:
+                    #odd_part = self.zeta_powers_odd[self._chi_odd_exponent(m,n)]
+                    odd_part = self.zeta_power_odd(self._chi_odd_exponent(m,n))
             else:
-                odd_part = self.zeta_powers_odd[self._chi_odd_exponent(m,n)]
+                if gcd(m, self.q) > 1 or gcd(n, self.q) > 1:
+                    odd_part = 0
+                else:
+                    odd_part = self.zeta_power_odd(self._chi_odd_exponent(m,n))
 
         return even_part * odd_part
 
@@ -989,21 +1013,39 @@ cdef class DirichletCharacter_conrey:
 
         cdef long p = self._parent.primes[j]
         n = self._n % self._parent.q_odd
-        cdef long dlog = self._parent.A[n * self._parent.k + j]
+        cdef dlog
+        if self._parent.precomp:
+            dlog = self._parent.A[n * self._parent.k + j]
+        else:
+            dlog = Mod(n, p).log(self._parent.generators[j])
         return dlog % p != 0
 
     cdef _is_primitive_at_two(self):
         cdef long q_even = self._parent.q_even
         cdef long * B = self._parent.B
         cdef long n = self._n % q_even
+        cdef long epsilon
+        cdef long alpha
         if q_even == 1:
             return True
         elif q_even == 2:
             return False
         elif q_even == 4:
             return n == 3
-        else:
+        elif self._parent.precomp:
             return B[n] % 2 == 1
+        else:
+            if n % 4 == 1:
+                epsilon = 1
+            else:
+                epsilon = -1
+
+            if epsilon == 1:
+                alpha = Mod(n, self.q_even).log(5)
+            else:
+                alpha = Mod(self.q_even - n, self.q_even).log(5)
+
+            return alpha % 2 == 1
 
     def is_trivial(self):
         r"""
@@ -1262,8 +1304,16 @@ cdef class DirichletCharacter_conrey:
 
         cdef long e, conductor, index
         cdef long p = self._parent.primes[j]
+        cdef long g = self._parent.generators[j]
+        cdef long p_power = self._parent.exponents[j]
+
         n = self._n % self._parent.q_odd
-        cdef long dlog = self._parent.A[n * self._parent.k + j]
+        cdef long dlog
+        if self._parent.precomp:
+            dlog = self._parent.A[n * self._parent.k + j]
+        else:
+            dlog = Mod(n, p**p_power).log(g)
+
         if dlog == 0:
             return (1, 1)
         else:
@@ -1271,11 +1321,11 @@ cdef class DirichletCharacter_conrey:
             while dlog % p == 0:
                 dlog /= p
                 e = e + 1
-            conductor = p**(self._parent.exponents[j] - e)
-            index = power_mod(self._parent.generators[j], dlog, conductor)
+            conductor = p**(p_power - e)
+            index = power_mod(g, dlog, conductor)
             return (index, conductor)
 
-    cdef _primitive_part_at_two(self):
+    cpdef _primitive_part_at_two(self):
         r"""
         Return the conductor and the index of the primitive
         character associated to the even part of the modulus.
@@ -1313,14 +1363,20 @@ cdef class DirichletCharacter_conrey:
             else:
                 return (3,4)
         else:
-            #if n == 1:
-            #    return (1,1)
-            #elif n == q_even - 1:
-            #   return (7, 8) # special case for primitive character mod 8
-            #elif n == q_even/2 - 1:
-            #    return (3,4)  # special case for primitive character mod 4
-            alpha = B[n]
-            epsilon = B[n-1]
+            if self._parent.precomp:
+                alpha = B[n]
+                epsilon = B[n-1]
+            else:
+                if n % 4 == 1:
+                    epsilon = 1
+                else:
+                    epsilon = -1
+
+                if epsilon == 1:
+                    alpha = Mod(n, self.q_even).log(5)
+                else:
+                    alpha = Mod(self.q_even - n, self.q_even).log(5)
+
             if alpha == 0:
                 if epsilon == 1:
                     return (1,1)
