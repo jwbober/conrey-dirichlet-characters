@@ -13,26 +13,26 @@ if not os.environ.has_key('SAGE_ROOT'):
     sys.exit(1)
 else:
     SAGE_ROOT  = os.environ['SAGE_ROOT']
-    SAGE_LOCAL = SAGE_ROOT + '/local/'
+    SAGE_LOCAL = os.environ['SAGE_LOCAL']
+    SAGE_SRC = os.environ['SAGE_SRC']
 
 extra_link_args =  ['-L' + SAGE_LOCAL + '/lib']
 extra_compile_args = ['-w', '-O2']
 
 ext_modules = [Extension('dirichlet_conrey', sources=['dirichlet_conrey.pyx', ],
                      library_dirs=[SAGE_LOCAL + '/lib/'],
-                     include_dirs=[SAGE_ROOT + '/devel/sage/sage/ext'],
+                     include_dirs=[SAGE_SRC + '/sage/ext'],
                      libraries=['csage'],
                      extra_compile_args = extra_compile_args,
                      extra_link_args = extra_link_args)]
                      
 
-include_dirs = [SAGE_ROOT + "/local/include/csage/",
-                SAGE_ROOT + "/local/include/",
-                SAGE_ROOT + "/local/include/python2.7",
-                SAGE_ROOT + "/local/lib/python2.7/site-packages/numpy/core/include/",
-                SAGE_ROOT + "/devel/sage/sage/ext/",
-                SAGE_ROOT + "/devel/sage/",
-                SAGE_ROOT + '/devel/sage/sage/gsl/',
+include_dirs = [SAGE_LOCAL + "/include/csage/",
+                SAGE_LOCAL + "/include/",
+                SAGE_LOCAL + "/include/python2.7",
+                SAGE_LOCAL + "/lib/python2.7/site-packages/numpy/core/include/",
+                SAGE_SRC + "/sage/ext/",
+                SAGE_SRC,
                 ]
 
 setup(name='DirichletConrey',
