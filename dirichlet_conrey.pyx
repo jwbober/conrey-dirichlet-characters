@@ -10,6 +10,7 @@ from libc.stdlib cimport malloc, free
 
 from sage.all import factor,        \
                      primitive_root,\
+                     IntegerModRing,\
                      euler_phi,     \
                      gcd,           \
                      lcm,           \
@@ -35,6 +36,28 @@ from sage.all import factor,        \
 from sage.modular.dirichlet import DirichletCharacter
 
 import cmath
+
+def correct_primitive_root(q):
+    if q < 4294967296:
+        if q == 40487:
+            return 10
+        else:
+            return primitive_root(q)
+    else:
+        a = primitive_root(q)
+        R2 = IntegerModRing(q^2)
+        if R2(a).is_primitive_root():
+            return a
+        else:
+            print \
+r"""You have found a nice example of a case where the smallest primitive root
+mod p is not a primitive root mod p^2. Please email jwbober@gmail.com and/or
+molinp@math.jussieu.fr."""
+            a += 1
+            R1 = IntegerModRing(q)
+            while not (R1(a).is_primitive_root() and R2.is_primitive_root()):
+                a += 1
+            return a
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
 cdef float PI = float(pi)
@@ -174,7 +197,7 @@ cdef class DirichletGroup_conrey:
         cdef long a
         for j in range(self.k):
             x = self.primes[j]**self.exponents[j]
-            g = primitive_root(x)
+            g = correct_primitive_root(x)
             self.generators[j] = g
             phi = self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1)
             self.PHI[j] = self.phi_q_odd/phi
