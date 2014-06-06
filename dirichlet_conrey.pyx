@@ -58,6 +58,7 @@ molinp@math.jussieu.fr."""
             while not (R1(a).is_primitive_root() and R2.is_primitive_root()):
                 a += 1
             return a
+    #the next example is: 6692367337
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
 cdef float PI = float(pi)
@@ -612,6 +613,66 @@ cdef class DirichletGroup_conrey:
         n = crt(n_odd, n_even, ZZ(self.q_odd), ZZ(self.q_even))
 
         return self[n]
+
+    cpdef _galois_orbits(self):
+        '''
+        Return the Galois orbits of this Dirichlet group as a list of lists
+        of integers mod q.
+        '''
+
+        N = self.zeta_order()
+        q = self.modulus()
+
+        R = IntegerModRing(q)
+        S = set(R)
+        for x in R:
+            if gcd(x, q) != 1:
+                S.remove(x)
+
+        orbits = []
+
+        while len(S) > 0:
+            n = S.pop()
+            orbit = set([n])
+
+            for a in range(N): # should do better here...
+                if gcd(a,N) == 1:
+                    k = n**a
+                    if k in S:
+                        S.remove(k)
+                    orbit.add(k)
+
+            orbits.append(list(orbit))
+
+        return orbits
+
+    cpdef galois_orbits(self):
+        '''
+        Return the Galois orbits of this Dirichlet group as a list of lists
+        of Dirichlet characters.
+
+        TESTS::
+
+        sage: from dirichlet_conrey import *
+        sage: for q in [14, 17, 109, 64]:
+        ...    G = DirichletGroup_conrey(q)
+        ...    orbits = G.galois_orbits()
+        ...    G2 = DirichletGroup(q)
+        ...    orbits2 = G2.galois_orbits()
+        ...    S1 = sorted([ sorted([chi.number() for chi in o]) for o in orbits])
+        ...    S2 = sorted([ sorted([G.from_sage_character(chi).number() for chi in o]) for o in orbits2])
+        ...    if S1 != S2:
+        ...        print q
+        '''
+        orbits = self._galois_orbits()
+        orbits_as_characters = []
+        for o in orbits:
+            orbit = []
+            for n in o:
+                orbit.append(self[n])
+            orbits_as_characters.append(orbit)
+
+        return orbits_as_characters
 
 def test_conversion(q):
     G = DirichletGroup_conrey(q)
@@ -1407,7 +1468,7 @@ cdef class DirichletCharacter_conrey:
 
         # To make sure that the exponent vector has the right type, I'm
         # mimicking a bit what is done in modular/dirichlet.pyx, without
-        # necessarily understanding if what I'm doing it right.
+        # necessarily understanding if what I'm doing is right.
         # 
         # Thus I put the XXX here to mark this as a possible trouble
         # spot if there are problems in the future...
