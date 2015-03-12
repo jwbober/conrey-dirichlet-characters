@@ -2,9 +2,17 @@
 # A new implementation of Dirichlet characters based on the numbering scheme
 # devised by Brian Conrey.
 #
-include "interrupt.pxi"  # ctrl-c interrupt block support
-include "stdsage.pxi"  # ctrl-c interrupt block support
-include "cdefs.pxi"
+
+# Maybe the following lines used to be necessary for something with some old
+# version of sage/cython? I don't know. I just did a copy-and-paste of some
+# example a long time ago. Anyway, they don't seem necessary now, and in fact
+# break compilation on new versions of Sage. But maybe with a really old
+# version of Sage/cython it would be necessary to uncomment some of the
+# following lines and get rid of the from libc.stdlib... line.
+#
+#include "interrupt.pxi"  # ctrl-c interrupt block support
+#include "stdsage.pxi"  # ctrl-c interrupt block support
+#include "cdefs.pxi"
 
 from libc.stdlib cimport malloc, free
 
@@ -1487,6 +1495,20 @@ cdef class DirichletCharacter_conrey:
             S = S + self.value(n)
 
         return S
+
+    cpdef partial_sums(self, complex normalization = 1.0):
+        """
+        return the partial sums of chi
+        """
+        L = []
+        cdef complex S = 0
+        L.append(S)
+        for n in range(self._parent.q):
+            S = S + self.value(n)
+            L.append(S/normalization)
+
+        return L
+
 
     cpdef complex value(self, long m):
         return self._parent.chi(self._n, m)
