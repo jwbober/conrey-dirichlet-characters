@@ -22,7 +22,6 @@ extra_compile_args = ['-w', '-O2']
 ext_modules = [Extension('dirichlet_conrey', sources=['dirichlet_conrey.pyx', ],
                      library_dirs=[SAGE_LOCAL + '/lib/'],
                      include_dirs=[SAGE_SRC + '/sage/ext'],
-                     libraries=['csage'],
                      extra_compile_args = extra_compile_args,
                      extra_link_args = extra_link_args)]
                      
