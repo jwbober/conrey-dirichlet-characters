@@ -1136,9 +1136,9 @@ cdef class DirichletCharacter_conrey:
 
     def level(self):
         r"""
-        synonym for conductor().
+        synonym for modulus().
         """
-        return self.conductor()
+        return self.modulus()
 
     def logvalue(self, long m):
         r"""
