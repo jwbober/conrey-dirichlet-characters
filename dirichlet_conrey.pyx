@@ -558,6 +558,11 @@ cdef class DirichletGroup_conrey:
             ... else:
             ...    print q, x
             True
+            sage: # Testing that a bug reported by Fredrik Stromberg is fixed...
+            sage: eps1 = DirichletGroup(5)([-1])
+            sage: eps2 = DirichletGroup(5,QQ)([-1])
+            sage: DirichletGroup_conrey(5).from_sage_character(eps1)==DirichletGroup_conrey(5).from_sage_character(eps2)
+            True
         """
         #
         # At odd prime powers, it is relatively easy to construct a character
@@ -570,6 +575,14 @@ cdef class DirichletGroup_conrey:
         #
         if chi.modulus() != self.q:
             raise ArithmeticError("The character we are translating from must have the same modulus as this Dirichlet group.")
+
+        # The conversion code below assumes that the character
+        # has been constructed as a member of the full group of characters
+        # mod q. Thus, it would break with a chacter constructed
+        # as DirichletGroup(5, QQ)([-1]), for example, if we didn't first
+        # "promote" the character to a member of the full group.
+
+        chi = self.standard_dirichlet_group()(chi)
 
         decomposition = chi.decomposition()
         n_even = 1
