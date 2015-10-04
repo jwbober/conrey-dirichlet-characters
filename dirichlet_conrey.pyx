@@ -713,8 +713,13 @@ cdef class DirichletCharacter_conrey:
         """
             The nth character for the Dirichlet Group parent.
         """
+        if gcd(parent.q, n) != 1:
+            raise ArithmeticError("n must be coprime to the modulus")
         self._parent = parent
-        self._number = n
+        if parent.q == 1:
+            self._number = 1
+        else:
+            self._number = n % parent.q
         self._n = n % parent.q
         self.q = parent.q
 
@@ -741,7 +746,7 @@ cdef class DirichletCharacter_conrey:
             True
             sage: chi2 > chi3
             False
-            sage: chi1 < G2[0]
+            sage: chi1 < G2[1]
             True
         """
         if(self._parent.q != other._parent.q):
@@ -1320,9 +1325,9 @@ cdef class DirichletCharacter_conrey:
         sage: from dirichlet_conrey import *
         sage: G = DirichletGroup_conrey(17)
         sage: G[1].primitive_character()
-        Dirichlet character with index 0 modulo 1
+        Dirichlet character with index 1 modulo 1
         sage: G[18].primitive_character()
-        Dirichlet character with index 0 modulo 1
+        Dirichlet character with index 1 modulo 1
         sage: G[2].primitive_character()
         Dirichlet character with index 2 modulo 17
         sage: G = DirichletGroup_conrey(1)
@@ -1443,7 +1448,7 @@ cdef class DirichletCharacter_conrey:
             return (index, conductor)
 
     def __repr__(self):
-        return "Dirichlet character with index %d modulo %d" % (self._n, self._parent.q)
+        return "Dirichlet character with index %d modulo %d" % (self._number, self._parent.q)
 
     def restrict(self):
         r"""
