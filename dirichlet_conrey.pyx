@@ -816,6 +816,8 @@ cdef class DirichletCharacter_conrey:
         r"""
         Return the number a such that chi(m) = e(a/phi(q)).
         """
+        if gcd(m,self._parent.q) != 1:
+            return -1
         cdef long exponent
         cdef long q_even = self._parent.q_even
         cdef long q_odd = self._parent.q_odd
