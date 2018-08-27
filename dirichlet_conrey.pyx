@@ -93,12 +93,12 @@ cdef class DirichletGroup_conrey:
     #        > This is a TODO.
 
     cdef long q             # the modulus
-                            
+
     cdef long q_even        # for computation we will strip out the even
     cdef long q_odd         # factors from the modulus. q == q_even * q_odd
-                            
+
     cdef long k             # the number of factors of q_odd
-                            
+
     cdef long * primes      # a list of the odd prime factors of the modulus
     cdef long * exponents   # a list of the exponents of the odd prime factors in the factorization
     cdef long * generators  # a primitive root for each odd prime factor
@@ -120,13 +120,13 @@ cdef class DirichletGroup_conrey:
                             # implementation from working reasonably for very
                             # large modulus. We will need something else which
                             # does not use any precomputation for that case.
- 
+
     cdef long * B           # exponents for q_even:
                             # for each odd m, 0 <= m < q_even, we will compute B
                             # so that
-                            # 
+                            #
                             #   m == B[m-1] * 5**B[m] mod q_even,
-                            # 
+                            #
                             # where B[m-1] = +- 1 and 0 <= B[m] < q_even/4
 
     cdef long * PHI         # PHI[j] = phi(q_odd)/phi(p[j]**e[j]). This will make it easier
@@ -134,13 +134,13 @@ cdef class DirichletGroup_conrey:
 
     cdef long phi_q_odd     # phi(q_odd)
     cdef long phi_q         # phi(q)
-    
+
     cdef complex * zeta_powers_odd  # an array holding powers of a root of unity.
                                     # this should be the only part of the code that
                                     # needs to change in order to work over a cyclotomic field
 
     cdef complex * zeta_powers_even # for the even part of the character
-    
+
     cdef _standard_dirichlet_group
     cdef _invariants
     cdef _gens
@@ -153,7 +153,7 @@ cdef class DirichletGroup_conrey:
             self.q = modulus
         except OverflowError:
             raise NotImplementedError("Currently this implementation does not allow a modulus that large.")
-            
+
         #self.precomp = (self.q < 100000) # should test to find right value
 
         self.precomp = 1
@@ -196,7 +196,7 @@ cdef class DirichletGroup_conrey:
         # We now set up the rest of the precomputed arrays.
 
         self.phi_q_odd = euler_phi(self.q_odd)
-     
+
         if self.q_even > 1:
             self.phi_q = self.phi_q_odd * self.q_even/2
         else:
@@ -275,7 +275,7 @@ cdef class DirichletGroup_conrey:
                 logn = Mod(n,pj).log(gj)
                 x = x + self.PHI[j]*logm*logn % self.phi_q_odd
             return x
-            
+
 
     cpdef long _chi_even_exponent(self, long m, long n):
         r"""
@@ -307,7 +307,7 @@ cdef class DirichletGroup_conrey:
                 return exponent % (self.q_even/4)
             else:
                 return 0
-            
+
     cpdef complex chi(self, long m, long n):
         if not self.precomp:
             raise NotImplementedError
@@ -484,7 +484,7 @@ cdef class DirichletGroup_conrey:
             36
 
         TESTS::
-            
+
             sage: from dirichlet_conrey import *
             sage: L = [ZZ.random_element(1, 100) for n in range(10)]
             sage: for n in L:
@@ -665,6 +665,26 @@ cdef class DirichletGroup_conrey:
 
             orbits.append(list(orbit))
 
+        trace_size = 10
+        traces_unique = False
+        while not traces_unique and trace_size <= q:
+            traces_lists = []
+            for orbit in orbits:
+                order = multiplicative_order(mod(orbit[0], q))
+                traces = [int(round(sum([self.chi(chi,n) for chi in orbit]).real))*(N/len(orbit)) for n in range(1, trace_size)]
+                traces_lists.append((order, traces, orbit))
+
+            traces_lists.sort()
+            traces_unique = True
+            for (order1, traces1, orbits1), (order2, traces2, orbits2) in zip(traces_lists, traces_lists[1:]):
+                if order1 == order2 and traces1 == traces2:
+                    traces_unique = False
+                    if trace_size == q:
+                        raise NotImplementedError("We did not expect this case to ever occur. ohno.")
+                    trace_size = min(2*trace_size, q)
+                    break
+
+        orbits = [o for (order, t,o) in traces_lists]
         return orbits
 
     cpdef galois_orbits(self):
@@ -811,7 +831,7 @@ cdef class DirichletCharacter_conrey:
             L.append( DirichletGroup_conrey(q)._getitem_(n % q) )
 
         return L
-    
+
     cpdef long exponent(self, long m):
         r"""
         Return the number a such that chi(m) = e(a/phi(q)).
@@ -844,7 +864,7 @@ cdef class DirichletCharacter_conrey:
             exponent = odd_exponent
         else:
             exponent = odd_exponent * q_even/2 + even_exponent * self._parent.phi_q_odd
-    
+
         # we now have the value of chi(m) as e(exponent/phi(q))
 
         # it could be equal to phi(q), though, and in that case we
@@ -924,7 +944,7 @@ cdef class DirichletCharacter_conrey:
                     indices.append(q_even2/2 - 1)
             if q_even1 == 8:
                 pass
-                
+
         moduli.append(q_even2)
         return G[crt(indices, moduli)]
 
@@ -1539,3 +1559,29 @@ cdef class DirichletCharacter_conrey:
 
     #cdef complex __call__unsafe(self, long m):
     #    return self.parent._chi_unsafe(self._n, m)
+
+    def lcalc_file(self):
+        q = self._parent.q
+        filestring = '3\n'
+        filestring += '1\n'
+        filestring += str(q) + '\n'
+        filestring += str(q) + '\n'
+        filestring += '1\n'
+        filestring += '.5\n'
+        if self.is_even():
+            filestring += '0 0\n'
+            omega = CC(self.gauss_sum())
+            omega = omega/omega.abs()
+        else:
+            filestring += '.5 0\n'
+            omega = CC(self.gauss_sum()/1j)
+            omega = omega/omega.abs()
+        filestring += str(RR(q/pi).sqrt()) + '\n'
+        filestring += '{} {}\n'.format(omega.real(), omega.imag())
+        filestring += '0\n'
+        for n in range(1, q + 1):
+            z = CC(self(n))
+            filestring += '{} {}\n'.format(z.real(), z.imag())
+
+        return filestring
+
