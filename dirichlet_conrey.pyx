@@ -665,7 +665,7 @@ cdef class DirichletGroup_conrey:
 
             orbits.append(list(orbit))
 
-        trace_size = 10
+        trace_size = min(10, q)
         traces_unique = False
         while not traces_unique and trace_size <= q:
             traces_lists = []
