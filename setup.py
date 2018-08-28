@@ -35,7 +35,7 @@ include_dirs = [SAGE_LOCAL + "/include/csage/",
                 ]
 
 setup(name='DirichletConrey',
-      version='0.1',
+      version='0.11',
       description='desc',
       author='J. W. Bober',
       author_email='jwbober@gmail.com',
