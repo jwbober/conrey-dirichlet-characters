@@ -53,7 +53,7 @@ def correct_primitive_root(q):
             return primitive_root(q)
     else:
         a = primitive_root(q)
-        R2 = IntegerModRing(q^2)
+        R2 = IntegerModRing(q**2)
         if R2(a).is_primitive_root():
             return a
         else:
@@ -63,7 +63,7 @@ mod p is not a primitive root mod p^2. Please email jwbober@gmail.com and/or
 molinp@math.jussieu.fr."""
             a += 1
             R1 = IntegerModRing(q)
-            while not (R1(a).is_primitive_root() and R2.is_primitive_root()):
+            while not (R1(a).is_primitive_root() and R2(a).is_primitive_root()):
                 a += 1
             return a
     #the next example is: 6692367337
