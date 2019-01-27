@@ -3,13 +3,13 @@
 # and the cython documentation
 
 # Build using 'python setup.py'
-import distutils.sysconfig, os, sys
+import os, sys
 #from distutils.core import setup, Extension
 from setuptools import setup, Extension
 from Cython.Distutils import build_ext
 
 if not os.environ.has_key('SAGE_ROOT'):
-    print "    ERROR: The environment variable SAGE_ROOT must be defined."
+    print("    ERROR: The environment variable SAGE_ROOT must be defined.")
     sys.exit(1)
 else:
     SAGE_ROOT  = os.environ['SAGE_ROOT']
