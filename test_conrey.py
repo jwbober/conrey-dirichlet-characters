@@ -1,10 +1,12 @@
-from sage.all import xrange, randint, Mod, prod, gcd
+from sage.all import randint, Mod, prod, gcd, N
+import pyximport; pyximport.install()
 from dirichlet_conrey import DirichletGroup_conrey
 
 def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
   for n,r in nranges:
-      for i in xrange(n):
+      for i in range(n):
           q = randint(1,r)
+          print("n, r, i, q = {}, {}, {}, {}".format(n,r,i,q))
           G = DirichletGroup_conrey(q)
           inv = G.invariants()
           cinv = tuple([ Mod(g,q).multiplicative_order() for g in G.gens() ])
@@ -32,7 +34,7 @@ def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
                   elif q < 10^6:
                       try:
                           ref = chi.sage_character()(n).n().real()
-                          new = (chi(n).real).n()
+                          new = N(chi(n).real)
                           assert abs(ref - new) < 1e-5
                       except:
                           print( 'unit value error')

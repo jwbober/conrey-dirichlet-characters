@@ -42,6 +42,7 @@ from sage.all import factor,        \
                      imag
 
 from sage.modular.dirichlet import DirichletCharacter
+from sage.structure.richcmp import richcmp
 
 import cmath
 
@@ -746,7 +747,7 @@ cdef class DirichletCharacter_conrey:
     def __call__(self, long m):
         return self.value(m)
 
-    def __cmp__(self, DirichletCharacter_conrey other):
+    def _richcmp_(self, DirichletCharacter_conrey other, op):
         r"""
         Compare self to other. Return equality if and only if the moduli and
         the character number are the same. When different, characters are first
@@ -770,9 +771,9 @@ cdef class DirichletCharacter_conrey:
             True
         """
         if(self._parent.q != other._parent.q):
-            return cmp(self._parent.q, other._parent.q)
+            return richcmp(self._parent.q, other._parent.q)
         else:
-            return cmp(self._n, other._n)
+            return richcmp(self._n, other._n)
 
     def conductor(self):
         r"""
