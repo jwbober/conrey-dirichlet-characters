@@ -1,10 +1,12 @@
-from sage.all import *
-from dirichlet_conrey import *
+from sage.all import randint, Mod, prod, gcd, N
+import pyximport; pyximport.install()
+from dirichlet_conrey import DirichletGroup_conrey
 
 def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
   for n,r in nranges:
-      for i in xrange(n):
+      for i in range(n):
           q = randint(1,r)
+          print("n, r, i, q = {}, {}, {}, {}".format(n,r,i,q))
           G = DirichletGroup_conrey(q)
           inv = G.invariants()
           cinv = tuple([ Mod(g,q).multiplicative_order() for g in G.gens() ])
@@ -13,7 +15,7 @@ def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
               assert  q <= 2 or G.zeta_order() == inv[0]
               assert  cinv == inv
           except:
-              print 'group error'
+              print( 'group error')
               return q, inv, G
           if q > 2:
               m = 0
@@ -27,7 +29,7 @@ def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
                       try:
                           assert chi.logvalue(n) == -1
                       except:
-                          print 'non unit value error'
+                          print( 'non unit value error')
                           return chi, n, r
                   elif q < 10^6:
                       try:
@@ -35,8 +37,8 @@ def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
                           new = N(chi(n).real)
                           assert abs(ref - new) < 1e-5
                       except:
-                          print 'unit value error'
+                          print( 'unit value error')
                           return chi, n
               except:
-                  print 'char error'
+                  print( 'char error')
                   return chi, n, r
