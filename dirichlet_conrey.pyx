@@ -747,7 +747,7 @@ cdef class DirichletCharacter_conrey:
     def __call__(self, long m):
         return self.value(m)
 
-    def _richcmp_(self, DirichletCharacter_conrey other, op):
+    def __richcmp__(self, DirichletCharacter_conrey other, op):
         r"""
         Compare self to other. Return equality if and only if the moduli and
         the character number are the same. When different, characters are first
