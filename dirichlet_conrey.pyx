@@ -58,10 +58,10 @@ def correct_primitive_root(q):
         if R2(a).is_primitive_root():
             return a
         else:
-            print \
+            print(
 r"""You have found a nice example of a case where the smallest primitive root
 mod p is not a primitive root mod p^2. Please email jwbober@gmail.com and/or
-molinp@math.jussieu.fr."""
+molinp@math.jussieu.fr.""")
             a += 1
             R1 = IntegerModRing(q)
             while not (R1(a).is_primitive_root() and R2(a).is_primitive_root()):
@@ -489,8 +489,8 @@ cdef class DirichletGroup_conrey:
             sage: from dirichlet_conrey import *
             sage: L = [ZZ.random_element(1, 100) for n in range(10)]
             sage: for n in L:
-            ...    if DirichletGroup_conrey(n).zeta_order() != DirichletGroup(n).zeta_order():
-            ...        print "wrong answer for n =", n
+            ....:     if DirichletGroup_conrey(n).zeta_order() != DirichletGroup(n).zeta_order():
+            ....:         print("wrong answer for n =", n)
         """
 
         if self.q > 2:
@@ -504,6 +504,7 @@ cdef class DirichletGroup_conrey:
         standard sage format), return the character that correponds to it.
 
         EXAMPLES::
+        
             sage: from dirichlet_conrey import *
             sage: q = ZZ.random_element(2, 500)
             sage: q = q - 1 + q%2
@@ -514,11 +515,11 @@ cdef class DirichletGroup_conrey:
             True
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
-            ...    x = ZZ.random_element(1,q)
+            ....:     x = ZZ.random_element(1,q)
             sage: if G[x] == G.from_sage_character(G[x].sage_character()):
-            ...    print True
-            ... else:
-            ...    print q, x
+            ....:     print(True)
+            ....: else:
+            ....:     print(q, x)
             True
             sage: q = 2 * q
             sage: G = DirichletGroup_conrey(q)
@@ -526,7 +527,7 @@ cdef class DirichletGroup_conrey:
             True
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
-            ...    x = ZZ.random_element(1,q)
+            ....:     x = ZZ.random_element(1,q)
             sage: G[x] == G.from_sage_character(G[x].sage_character())
             True
             sage: q = 2 * q
@@ -535,7 +536,7 @@ cdef class DirichletGroup_conrey:
             True
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
-            ...    x = ZZ.random_element(1,q)
+            ....:     x = ZZ.random_element(1,q)
             sage: G[x] == G.from_sage_character(G[x].sage_character())
             True
             sage: q = 2 * q
@@ -544,7 +545,7 @@ cdef class DirichletGroup_conrey:
             True
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
-            ...    x = ZZ.random_element(1,q)
+            ....:    x = ZZ.random_element(1,q)
             sage: G[x] == G.from_sage_character(G[x].sage_character())
             True
             sage: q = 2 * q
@@ -553,11 +554,11 @@ cdef class DirichletGroup_conrey:
             True
             sage: x = ZZ.random_element(1,q)
             sage: while gcd(x,q) > 1:
-            ...    x = ZZ.random_element(1,q)
+            ....:     x = ZZ.random_element(1,q)
             sage: if G[x] == G.from_sage_character(G[x].sage_character()):
-            ...    print True
-            ... else:
-            ...    print q, x
+            ....:     print(True)
+            ....: else:
+            ....:     print(q, x)
             True
             sage: # Testing that a bug reported by Fredrik Stromberg is fixed...
             sage: eps1 = DirichletGroup(5)([-1])
@@ -697,14 +698,14 @@ cdef class DirichletGroup_conrey:
 
         sage: from dirichlet_conrey import *
         sage: for q in [14, 17, 109, 64]:
-        ...    G = DirichletGroup_conrey(q)
-        ...    orbits = G.galois_orbits()
-        ...    G2 = DirichletGroup(q)
-        ...    orbits2 = G2.galois_orbits()
-        ...    S1 = sorted([ sorted([chi.number() for chi in o]) for o in orbits])
-        ...    S2 = sorted([ sorted([G.from_sage_character(chi).number() for chi in o]) for o in orbits2])
-        ...    if S1 != S2:
-        ...        print q
+        ....:     G = DirichletGroup_conrey(q)
+        ....:     orbits = G.galois_orbits()
+        ....:     G2 = DirichletGroup(q)
+        ....:     orbits2 = G2.galois_orbits()
+        ....:     S1 = sorted([ sorted([chi.number() for chi in o]) for o in orbits])
+        ....:     S2 = sorted([ sorted([G.from_sage_character(chi).number() for chi in o]) for o in orbits2])
+        ....:     if S1 != S2:
+        ....:         print(q)
         '''
         orbits = self._galois_orbits()
         orbits_as_characters = []
@@ -720,7 +721,7 @@ def test_conversion(q):
     G = DirichletGroup_conrey(q)
     for chi in G:
         if not G.from_sage_character(chi.sage_character()) == chi:
-            print "Failure for q = {}, chi number {}".format(q, chi.number())
+            print("Failure for q = {}, chi number {}".format(q, chi.number()))
             break
 
 cdef class DirichletCharacter_conrey:
@@ -771,9 +772,9 @@ cdef class DirichletCharacter_conrey:
             True
         """
         if(self._parent.q != other._parent.q):
-            return richcmp(self._parent.q, other._parent.q)
+            return richcmp(self._parent.q, other._parent.q, op)
         else:
-            return richcmp(self._n, other._n)
+            return richcmp(self._n, other._n, op)
 
     def conductor(self):
         r"""
