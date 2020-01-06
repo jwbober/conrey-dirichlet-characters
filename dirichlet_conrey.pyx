@@ -163,7 +163,7 @@ cdef class DirichletGroup_conrey:
         self.q_even = 1
         self.q_odd = self.q
         while self.q_odd % 2 == 0:
-            self.q_odd = self.q_odd/2
+            self.q_odd = self.q_odd // 2
             self.q_even = self.q_even * 2
 
         if self.q_odd > 1:
@@ -189,7 +189,7 @@ cdef class DirichletGroup_conrey:
             # initialized, it will be of size q_even/4
 
             self.B = <long*>malloc(self.q_even * sizeof(long))
-            self.zeta_powers_even = <complex*>malloc(self.q_even/4 * sizeof(complex))
+            self.zeta_powers_even = <complex*>malloc(self.q_even // 4 * sizeof(complex))
 
     def __init__(self, modulus, basering=None):
         # Once we've hit this stage, all of our arrays are allocated,
@@ -200,7 +200,7 @@ cdef class DirichletGroup_conrey:
         self.phi_q_odd = euler_phi(self.q_odd)
 
         if self.q_even > 1:
-            self.phi_q = self.phi_q_odd * self.q_even/2
+            self.phi_q = self.phi_q_odd * self.q_even // 2
         else:
             self.phi_q = self.phi_q_odd
 
@@ -211,7 +211,7 @@ cdef class DirichletGroup_conrey:
             g = correct_primitive_root(x)
             self.generators[j] = g
             phi = self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1)
-            self.PHI[j] = self.phi_q_odd/phi
+            self.PHI[j] = self.phi_q_odd // phi
             if self.precomp:
                 a = 1
                 for l in range(phi):
@@ -243,10 +243,10 @@ cdef class DirichletGroup_conrey:
 
         cdef long pow_five = 1
         if self.precomp and self.q_even > 4:
-            for n in range(self.q_even / 4):
+            for n in range(self.q_even // 4):
                 self.zeta_powers_even[n] = cmath.exp(twopii * n * 4 / <double>self.q_even)
 
-            for e in range(self.q_even / 4):
+            for e in range(self.q_even // 4):
                 self.B[pow_five] = e
                 self.B[pow_five - 1] = 1
                 self.B[self.q_even - pow_five] = e
@@ -290,12 +290,12 @@ cdef class DirichletGroup_conrey:
         if self.precomp:
             exponent = self.B[m]*self.B[n]
             if self.B[m-1] == -1 and self.B[n-1] == -1:
-                exponent += self.q_even/8
-            return exponent % (self.q_even/4)
+                exponent += self.q_even // 8
+            return exponent % (self.q_even // 4)
         else:
             if self.q_even > 2:
                 if m % 4 == 3 and n % 4 == 3:
-                    exponent = self.q_even//8
+                    exponent = self.q_even // 8
                 if self.q_even > 4:
                     g2 = Mod(5, self.q_even)
                     if(m % 4 == 3):
@@ -304,8 +304,8 @@ cdef class DirichletGroup_conrey:
                         n = -n
                     logm = Mod(m, self.q_even).log(g2)
                     logn = Mod(n, self.q_even).log(g2)
-                    exponent += logn*logn*self.q_even//4
-                return exponent % (self.q_even/4)
+                    exponent += logn*logn*self.q_even // 4
+                return exponent % (self.q_even // 4)
             else:
                 return 0
 
@@ -420,7 +420,7 @@ cdef class DirichletGroup_conrey:
             pj = p**(e - 1)
             w.append(pj*(p-1))  # phi(p**e)
             pj *= p
-            qj = self.q//pj
+            qj = self.q // pj
             assert qj*pj == self.q
             gj = self.generators[j]
             uj = inverse_mod(qj, pj)
@@ -434,7 +434,7 @@ cdef class DirichletGroup_conrey:
             g2 = 1 + q2*u2*(g2-1) % self.q
             g.append(g2)
         if self.q_even > 4:
-            w.append(self.q_even//4)
+            w.append(self.q_even // 4)
             g2 = 5
             g2 = 1 + q2*u2*(g2-1) % self.q
             g.append(g2)
@@ -617,7 +617,7 @@ cdef class DirichletGroup_conrey:
         #
         # This is going to be ugly...
         elif self.q_even > 4:
-            psi5_exponent = round(imag(CC(psi(5)).log() * (self.q_even/4)/(2*pi)))
+            psi5_exponent = round(imag(CC(psi(5)).log() * (self.q_even//4)/(2*pi)))
             n_even = power_mod(5, psi5_exponent, ZZ(self.q_even))
             if psi(5) != psi(-5):
                 n_even = self.q_even - n_even
@@ -866,7 +866,7 @@ cdef class DirichletCharacter_conrey:
         if q_even == 1:  # special case because phi(1) != 1/2.
             exponent = odd_exponent
         else:
-            exponent = odd_exponent * q_even/2 + even_exponent * self._parent.phi_q_odd
+            exponent = odd_exponent * q_even // 2 + even_exponent * self._parent.phi_q_odd
 
         # we now have the value of chi(m) as e(exponent/phi(q))
 
@@ -937,16 +937,16 @@ cdef class DirichletCharacter_conrey:
         else:
             raise NotImplementedError
 
-            # this stuff isn't really written yet...
-            if q_even1 <= 2:
-                indices.append(1)
-            if q_even1 == 4:
-                if self._n % 4 == 1:
-                    indices.append(1)
-                else:
-                    indices.append(q_even2/2 - 1)
-            if q_even1 == 8:
-                pass
+#            # this stuff isn't really written yet...
+#            if q_even1 <= 2:
+#                indices.append(1)
+#            if q_even1 == 4:
+#                if self._n % 4 == 1:
+#                    indices.append(1)
+#                else:
+#                    indices.append(q_even2/2 - 1)
+#            if q_even1 == 8:
+#                pass
 
         moduli.append(q_even2)
         return G[crt(indices, moduli)]
@@ -1246,7 +1246,7 @@ cdef class DirichletCharacter_conrey:
         cdef float absmax = 0
         cdef complex max = 0
         cdef long m = 0
-        for n in range(self.q/2 + 1):
+        for n in range(self.q // 2 + 1):
             S = S + self.value(n)
             if abs(S) > absmax:
                 max = S

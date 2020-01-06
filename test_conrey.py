@@ -42,3 +42,6 @@ def test_conrey(nranges=[(20,100),(200,1000),(500,500000)]):
               except:
                   print( 'char error')
                   return chi, n, r
+
+if __name__ == "__main__":
+    test_conrey()
