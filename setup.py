@@ -7,6 +7,8 @@ import os, sys
 #from distutils.core import setup, Extension
 from setuptools import setup, Extension
 from Cython.Distutils import build_ext
+from numpy import get_include
+from distutils.sysconfig import get_python_inc
 
 if not 'SAGE_ROOT' in os.environ:
     print("    ERROR: The environment variable SAGE_ROOT must be defined.")
@@ -25,14 +27,24 @@ ext_modules = [Extension('dirichlet_conrey', sources=['dirichlet_conrey.pyx', ],
                      extra_compile_args = extra_compile_args,
                      extra_link_args = extra_link_args)]
 
+if not 'SAGE_PYTHON_VERSION' in os.environ:
+    print("    ERROR: The environment variable SAGE_PYTHON_VERSION must be defined.")
+    sys.exit(1)
+else:
+    SAGE_PYTHON_VERSION = os.environ['SAGE_PYTHON_VERSION']
 
-include_dirs = [SAGE_LOCAL + "/include/csage/",
-                SAGE_LOCAL + "/include/",
-                SAGE_LOCAL + "/include/python2.7",
-                SAGE_LOCAL + "/lib/python2.7/site-packages/numpy/core/include/",
-                SAGE_SRC + "/sage/ext/",
-                SAGE_SRC,
-                ]
+for e in ext_modules:
+    e.cython_directives = {'language_level': "{}".format(SAGE_PYTHON_VERSION)}
+
+include_dirs = [
+        SAGE_LOCAL + "/include/csage/",
+        SAGE_LOCAL + "/include/",
+        get_python_inc(), # python include dir, per distutils
+        get_include(),    # numpy include dir, per numpy
+        SAGE_SRC + "/sage/ext/",
+        SAGE_SRC,
+]
+
 
 setup(name='DirichletConrey',
       version='0.111',
