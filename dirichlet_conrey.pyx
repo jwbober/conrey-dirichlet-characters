@@ -1462,9 +1462,9 @@ cdef class DirichletCharacter_conrey:
             f = 0
             m = alpha
             while m % 2 == 0:
-                m /= 2
+                m //= 2
                 f += 1
-            conductor = q_even / 2**f
+            conductor = q_even // 2**f
             index = power_mod(5, m, conductor)
             if epsilon == -1:
                 index = conductor - index
