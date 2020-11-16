@@ -27,11 +27,7 @@ ext_modules = [Extension('dirichlet_conrey', sources=['dirichlet_conrey.pyx', ],
                      extra_compile_args = extra_compile_args,
                      extra_link_args = extra_link_args)]
 
-if not 'SAGE_PYTHON_VERSION' in os.environ:
-    print("    ERROR: The environment variable SAGE_PYTHON_VERSION must be defined.")
-    sys.exit(1)
-else:
-    SAGE_PYTHON_VERSION = os.environ['SAGE_PYTHON_VERSION']
+SAGE_PYTHON_VERSION = os.getenv('SAGE_PYTHON_VERSION',3)
 
 for e in ext_modules:
     e.cython_directives = {'language_level': "{}".format(SAGE_PYTHON_VERSION)}
