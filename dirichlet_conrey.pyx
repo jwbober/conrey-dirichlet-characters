@@ -46,6 +46,16 @@ from sage.structure.richcmp import richcmp
 
 import cmath
 
+cdef long ipow(long a, long b):
+    '''
+    yes, this is stupid. but b will be small.
+    '''
+    cdef long x = 1
+    for i in range(b):
+        x = x*a
+
+    return x
+
 
 def correct_primitive_root(q):
     if q < 4294967296:
@@ -216,10 +226,12 @@ cdef class DirichletGroup_conrey:
         cdef long g
         cdef long a
         for j in range(self.k):
-            x = self.primes[j]**self.exponents[j]
+            x = ipow(self.primes[j], self.exponents[j])
+            #x = self.primes[j]**self.exponents[j]
             g = correct_primitive_root(x)
             self.generators[j] = g
-            phi = self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1)
+            phi = ipow(self.primes[j], self.exponents[j] - 1) * (self.primes[j] - 1)
+            #phi = self.primes[j]**(self.exponents[j] - 1) * (self.primes[j] - 1)
             self.PHI[j] = self.phi_q_odd // phi
             if self.precomp:
                 a = 1
@@ -1411,7 +1423,7 @@ cdef class DirichletCharacter_conrey:
         else:
             e = 0
             while dlog % p == 0:
-                dlog /= p
+                dlog //= p
                 e = e + 1
             conductor = p**(self._parent.exponents[j] - e)
             index = power_mod(self._parent.generators[j], dlog, conductor)
@@ -1517,7 +1529,7 @@ cdef class DirichletCharacter_conrey:
         cdef long zeta_order = G.zeta_order()
         exponents = []
         for a in gens:
-            exponent = (self.exponent(a) * zeta_order) / self._parent.phi_q
+            exponent = (self.exponent(a) * zeta_order) // self._parent.phi_q
             exponents.append(exponent)
 
         # To make sure that the exponent vector has the right type, I'm

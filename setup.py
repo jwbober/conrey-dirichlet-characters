@@ -43,7 +43,7 @@ include_dirs = [
 
 
 setup(name='DirichletConrey',
-      version='0.111',
+      version='0.112',
       description='desc',
       author='J. W. Bober',
       author_email='jwbober@gmail.com',
