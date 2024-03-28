@@ -69,6 +69,15 @@ molinp@math.jussieu.fr.""")
             return a
     # the next example is: 6692367337
 
+cdef long pos_mod(long m, long n):
+    """
+    Return the positive remainder of n modulo m. 
+    Note that the default behaviour of 'n % m' in C is to return a remainder 
+    with the same sign as the n.
+    """
+    if n < 0:
+        return (n % m) + m
+    return n % m
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
 cdef float PI = float(pi)
@@ -846,17 +855,17 @@ cdef class DirichletCharacter_conrey:
         cdef long q_odd = self._parent.q_odd
 
         if q_odd > 1:
-            odd_exponent = self._parent._chi_odd_exponent(self._n % q_odd, m % q_odd)
+            odd_exponent = self._parent._chi_odd_exponent(self._n % q_odd, pos_mod(q_odd,m))
         else:
             odd_exponent = 0
 
         if q_even > 4:
-            even_exponent = self._parent._chi_even_exponent(self._n % q_even, m % q_even)
+            even_exponent = self._parent._chi_even_exponent(self._n % q_even, pos_mod(q_even,m))
             even_exponent *= 2  # the function just above computes the exponent of
                                 # e(1/ (q_even/4) ), but we want the exponent of
                                 # e(1/phi(q_even)) = e(1/(q_even/2))
         elif q_even == 4:
-            if (self._n % q_even) == 3 == (m % q_even):
+            if (self._n % q_even) == 3 == pos_mod(q_even,m):
                 even_exponent = 1
             else:
                 even_exponent = 0
@@ -923,7 +932,7 @@ cdef class DirichletCharacter_conrey:
                 p = self._parent.primes[y]
                 q1 = p**self._parent.exponents[y]
                 q2 = p**G.exponents[y]
-                indices.append(power_mod(self._n % q1, q2/q1, q2))
+                indices.append(power_mod(self._n % q1, q2//q1, q2))
                 moduli.append(q2)
 
         # that takes care of the even part of the modulus. still need to deal
