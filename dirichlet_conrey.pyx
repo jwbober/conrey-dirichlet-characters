@@ -84,9 +84,12 @@ cdef long pos_mod(long m, long n):
     Return the positive remainder of n modulo m. 
     Note that the default behaviour of 'n % m' in C is to return a remainder 
     with the same sign as the n.
+
+    The default behaviour in cython is now to return positive numbers.
+    I guess it was different at some point.
     """
-    if n < 0:
-        return (n % m) + m
+    #if n < 0:
+    #    return (n % m) + m
     return n % m
 
 cdef complex twopii = 3.1415926535897932384626433833 * 2.0 * 1.0j
