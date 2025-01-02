@@ -16,33 +16,31 @@
 
 from libc.stdlib cimport malloc, free
 
-from sage.all import (factor,
-                     primitive_root,
-                     IntegerModRing,
-                     euler_phi,
-                     gcd,
-                     lcm,
-                     is_prime,
-                     DirichletGroup,
-                     vector,
-                     Integer,
-                     power_mod,
-                     prod,
-                     crt,
-                     mod,
-                     inverse_mod,
-                     multiplicative_order,
-                     pi,
-                     RR,
-                     CC,
-                     ZZ,
-                     diagonal_matrix,
-                     Mod,
-                     round,
-                     imag)
-
+from sage.arith.functions import lcm
+from sage.arith.misc import CRT as crt
+from sage.arith.misc import GCD as gcd
+from sage.arith.misc import euler_phi
+from sage.arith.misc import factor
+from sage.arith.misc import inverse_mod
+from sage.arith.misc import is_prime
+from sage.arith.misc import power_mod
+from sage.arith.misc import primitive_root
+from sage.functions.other import imag
+from sage.matrix.special import diagonal_matrix
+from sage.misc.functional import multiplicative_order
+from sage.misc.functional import round
+from sage.misc.misc_c import prod
 from sage.modular.dirichlet import DirichletCharacter
+from sage.modular.dirichlet import DirichletGroup
+from sage.modules.free_module_element import free_module_element as vector
+from sage.rings.cc import CC
+from sage.rings.finite_rings.integer_mod import Mod
+from sage.rings.finite_rings.integer_mod_ring import IntegerModRing
+from sage.rings.integer import Integer
+from sage.rings.integer_ring import Z as ZZ
+from sage.rings.real_mpfr import RR
 from sage.structure.richcmp import richcmp
+from sage.symbolic.constants import pi
 
 import cmath
 
@@ -695,7 +693,7 @@ cdef class DirichletGroup_conrey:
         while not traces_unique and trace_size <= q:
             traces_lists = []
             for orbit in orbits:
-                order = multiplicative_order(mod(orbit[0], q))
+                order = multiplicative_order(Mod(orbit[0], q))
                 traces = [int(round(sum([self.chi(chi, n) for chi in orbit]).real))*(N/len(orbit)) for n in range(1, trace_size)]
                 traces_lists.append((order, traces, orbit))
 
@@ -1358,7 +1356,7 @@ cdef class DirichletCharacter_conrey:
             sage: all(chi.multiplicative_order() == chi.sage_character().multiplicative_order() for chi in G)
             True
         """
-        return multiplicative_order(mod(self._n, self._parent.q))
+        return multiplicative_order(Mod(self._n, self._parent.q))
 
     cpdef parent(self):
         return self._parent
