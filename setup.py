@@ -10,13 +10,16 @@ from Cython.Distutils import build_ext
 from numpy import get_include
 from distutils.sysconfig import get_python_inc
 
-if not 'SAGE_ROOT' in os.environ:
-    print("    ERROR: The environment variable SAGE_ROOT must be defined.")
-    sys.exit(1)
-else:
-    SAGE_ROOT  = os.environ['SAGE_ROOT']
-    SAGE_LOCAL = os.environ['SAGE_LOCAL']
-    SAGE_SRC = os.environ['SAGE_SRC']
+try:
+    from sage.env import SAGE_ROOT, SAGE_LOCAL, SAGE_SRC
+except ImportError:
+    if not 'SAGE_ROOT' in os.environ:
+        print("    ERROR: The environment variable SAGE_ROOT must be defined.")
+        sys.exit(1)
+    else:
+        SAGE_ROOT  = os.environ['SAGE_ROOT']
+        SAGE_LOCAL = os.environ['SAGE_LOCAL']
+        SAGE_SRC = os.environ['SAGE_SRC']
 
 extra_link_args =  ['-L' + SAGE_LOCAL + '/lib']
 extra_compile_args = ['-w', '-O2']
@@ -50,6 +53,14 @@ setup(name='DirichletConrey',
       url='http://github.com/jwbober/conrey-dirichlet-characters',
       ext_modules = ext_modules,
       include_dirs = include_dirs,
+      extras_require={
+          'passagemath': [
+              'passagemath-modules',
+              'passagemath-repl',
+              'passagemath-schemes',
+              'passagemath-symbolics',
+          ],
+      },
       cmdclass = {'build_ext' : build_ext})
 
 
